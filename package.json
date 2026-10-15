@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "stop": "pwsh -File ./stop.ps1",
     "cli": "node cli.js",
     "burn": "pwsh -File ./burn.ps1"
   },

@@ -27,6 +27,7 @@
         <span class="engine-dot"></span>
         <span class="engine-text" id="engineStatusText">KÉSZENLÉT</span>
       </div>
+      <button id="btnShutdownServer" class="btn-shutdown" title="Szerver és háttérfolyamat teljes leállítása">🛑 Kilépés / Leállítás</button>
     </div>
   </header>
 
@@ -173,19 +174,15 @@
             </button>
           </div>
           <select id="modelSelect" class="form-select font-mono">
-            <optgroup label="🔥 Kiemelt Burn Combók / Stacks">
-              <option value="fp99/spam" selected>fp99/spam (Ajánlott Max Speed)</option>
-              <option value="fp99/All-Good">fp99/All-Good</option>
-              <option value="fp99/B-tier">fp99/B-tier</option>
-              <option value="fp99/S-tier">fp99/S-tier</option>
-              <option value="fp99/cheap-fuse">fp99/cheap-fuse</option>
+            <optgroup label="🔥 OmniRoute Stacks & Combos" id="combosOptGroup">
+              <option value="auto/fast" selected>auto/fast (Smart Auto Fast Stack)</option>
               <option value="auto/best-coding">auto/best-coding</option>
-              <option value="auto/fast">auto/fast</option>
-              <option value="auto/best-chat">auto/best-chat</option>
+              <option value="auto/best-fast">auto/best-fast</option>
+              <option value="auto/coding">auto/coding</option>
+              <option value="auto/cheap">auto/cheap</option>
             </optgroup>
-            <optgroup label="⚡ Egyéb Modellek" id="allModelsOptGroup">
-              <option value="antigravity/gemini-3.8-flash-high">antigravity/gemini-3.8-flash-high</option>
-              <option value="agy/gemini-3.8-flash-high">agy/gemini-3.8-flash-high</option>
+            <optgroup label="⚡ Elérhető Modellek" id="allModelsOptGroup">
+              <option value="auto/smart">auto/smart</option>
             </optgroup>
           </select>
           <div class="custom-model-row">
@@ -204,12 +201,7 @@
               </span>
             </label>
             <div id="multiStackTags" class="stack-tags-row" style="display: none;">
-              <label class="stack-tag active"><input type="checkbox" value="fp99/spam" checked> fp99/spam</label>
-              <label class="stack-tag active"><input type="checkbox" value="fp99/All-Good" checked> fp99/All-Good</label>
-              <label class="stack-tag active"><input type="checkbox" value="fp99/B-tier" checked> fp99/B-tier</label>
-              <label class="stack-tag"><input type="checkbox" value="fp99/cheap-fuse"> fp99/cheap-fuse</label>
-              <label class="stack-tag"><input type="checkbox" value="auto/best-coding"> auto/best-coding</label>
-              <label class="stack-tag"><input type="checkbox" value="antigravity/gemini-3.8-flash-high"> antigravity/gemini</label>
+              <span class="text-dim text-sm" id="multiStackLoading">Modellek betöltése az OmniRoute-ból...</span>
             </div>
           </div>
         </div>

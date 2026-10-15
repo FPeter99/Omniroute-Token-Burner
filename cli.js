@@ -32,7 +32,7 @@ function getArg(name, def) {
   return def;
 }
 
-const model = getArg('model', 'fp99/spam');
+const model = getArg('model', 'auto/fast');
 const concurrency = parseInt(getArg('concurrency', '8'), 10);
 const mode = getArg('mode', 'infinite'); // 'infinite' | 'target' | 'duration'
 const targetTokens = parseInt(getArg('target', '1000000'), 10);

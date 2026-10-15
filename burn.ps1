@@ -15,14 +15,14 @@
     (Közvetlenül elindítja a Web UI szervert és megnyitja a böngészőt)
 
 .EXAMPLE
-    .\burn.ps1 -Model "fp99/spam" -Concurrency 12 -Mode target -Target 500000
+    .\burn.ps1 -Model "auto/fast" -Concurrency 12 -Mode target -Target 500000
     (500.000 token elégetése CLI-ben 12 szálon)
 #>
 
 [CmdletBinding()]
 param(
     [switch]$Web,
-    [string]$Model = "fp99/spam",
+    [string]$Model = "auto/fast",
     [int]$Concurrency = 8,
     [ValidateSet("infinite", "target", "duration")]
     [string]$Mode = "infinite",

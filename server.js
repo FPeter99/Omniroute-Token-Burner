@@ -46,7 +46,7 @@ const detectedAuth = detectOmniRouteAuth();
 const engine = new BurnEngine({
   baseURL: detectedAuth.baseURL,
   apiKey: detectedAuth.apiKey,
-  model: 'fp99/spam',
+  model: 'auto/fast',
   concurrency: 8,
   mode: 'infinite',
   targetTokens: 1_000_000,
@@ -177,7 +177,7 @@ const server = http.createServer(async (req, res) => {
       const data = await response.json();
       const rawList = data.data || [];
 
-      // Sort models: prioritize combos (containing '/' with fp99 or auto), then sort alphabetically
+      // Prioritize combos / routing stacks (auto/*, custom combos, or aliases)
       const categorized = {
         combos: [],
         models: []
@@ -185,7 +185,7 @@ const server = http.createServer(async (req, res) => {
 
       for (const item of rawList) {
         const id = item.id || '';
-        if (id.startsWith('fp99/') || id.startsWith('auto/') || id.includes('combo')) {
+        if (id.startsWith('auto/') || id.includes('combo') || (id.includes('/') && !id.startsWith('openai/') && !id.startsWith('google/'))) {
           categorized.combos.push(item);
         } else {
           categorized.models.push(item);
@@ -252,6 +252,16 @@ const server = http.createServer(async (req, res) => {
       'Content-Disposition': `attachment; filename="burner-session-${Date.now()}.json"`
     });
     return res.end(JSON.stringify(stats, null, 2));
+  }
+
+  if (pathname === '/api/shutdown' && req.method === 'POST') {
+    engine.stop('server_shutdown');
+    sendJSON(res, 200, { success: true, message: 'OmniRoute Token Burner server shutting down...' });
+    setTimeout(() => {
+      console.log('\n🛑 Shutdown requested. Exiting process.');
+      process.exit(0);
+    }, 500);
+    return;
   }
 
   // --- Static Files ---

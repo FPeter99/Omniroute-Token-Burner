@@ -198,6 +198,25 @@ function setupEventListeners() {
     });
   }
 
+  // Server shutdown button
+  const btnShutdownServer = document.getElementById('btnShutdownServer');
+  if (btnShutdownServer) {
+    btnShutdownServer.addEventListener('click', async () => {
+      if (confirm('Biztosan leállítod a Token Burner szervert és kilépsz?')) {
+        try {
+          await fetch('/api/shutdown', { method: 'POST' });
+        } catch {}
+        document.body.innerHTML = `
+          <div style="display:flex;height:100vh;align-items:center;justify-content:center;background:#0c0d14;color:#ff5500;font-family:system-ui,sans-serif;flex-direction:column;gap:12px;text-align:center;padding:20px;">
+            <div style="font-size:48px;">🔥</div>
+            <h1 style="font-size:28px;color:#ffffff;">Token Burner Szerver Leállítva</h1>
+            <p style="color:#9ca3af;font-size:14px;">A folyamat és a háttérmotor sikeresen leállt. Most már biztonságosan bezárhatod ezt az ablakot.</p>
+          </div>
+        `;
+      }
+    });
+  }
+
   // Clear logs button
   btnClearLogs.addEventListener('click', () => {
     logs = [];
@@ -268,7 +287,7 @@ async function fetchModels() {
     for (const c of combos) {
       const opt = document.createElement('option');
       opt.value = c.id;
-      opt.textContent = `${c.id} ${c.id === 'fp99/spam' ? '★ (Ajánlott Burner)' : ''}`;
+      opt.textContent = c.id;
       comboGroup.appendChild(opt);
     }
     modelSelect.appendChild(comboGroup);
@@ -276,7 +295,7 @@ async function fetchModels() {
     const modelGroup = document.createElement('optgroup');
     modelGroup.label = `⚡ További elérhető modellek (${models.length} db)`;
 
-    // Take top 100 models to keep DOM lightweight
+    // Take top 150 models to keep DOM lightweight
     const sampleModels = models.slice(0, 150);
     for (const m of sampleModels) {
       const opt = document.createElement('option');
@@ -286,9 +305,35 @@ async function fetchModels() {
     }
     modelSelect.appendChild(modelGroup);
 
-    // Prefer fp99/spam if present
-    if (combos.some((c) => c.id === 'fp99/spam')) {
-      modelSelect.value = 'fp99/spam';
+    // Select sensible default
+    if (combos.some((c) => c.id === 'auto/fast')) {
+      modelSelect.value = 'auto/fast';
+    } else if (combos.length > 0) {
+      modelSelect.value = combos[0].id;
+    }
+
+    // Dynamically populate Multi-Stack Turbo tags with detected stacks/combos
+    if (multiStackTags) {
+      multiStackTags.innerHTML = '';
+      const poolCandidates = combos.length > 0 ? combos.slice(0, 8) : models.slice(0, 8);
+      if (poolCandidates.length === 0) {
+        multiStackTags.innerHTML = '<span class="text-dim text-sm">Nincsenek elérhető modellek</span>';
+      } else {
+        poolCandidates.forEach((item, index) => {
+          const label = document.createElement('label');
+          label.className = `stack-tag ${index < 3 ? 'active' : ''}`;
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.value = item.id;
+          chk.checked = index < 3;
+          chk.addEventListener('change', () => {
+            label.classList.toggle('active', chk.checked);
+          });
+          label.appendChild(chk);
+          label.appendChild(document.createTextNode(` ${item.id}`));
+          multiStackTags.appendChild(label);
+        });
+      }
     }
   } catch (err) {
     console.warn('Error fetching models:', err);

@@ -69,7 +69,7 @@ export class BurnEngine extends EventEmitter {
     super();
     this.baseURL = options.baseURL || 'http://localhost:20128/v1';
     this.apiKey = options.apiKey || '';
-    this.model = options.model || 'fp99/spam';
+    this.model = options.model || 'auto/fast';
     this.modelPool = Array.isArray(options.modelPool) && options.modelPool.length > 0 ? options.modelPool : [this.model];
     this.promptSizeMultiplier = Number(options.promptSizeMultiplier) || 1;
     this.concurrency = Math.max(1, Math.min(64, Number(options.concurrency) || 8));

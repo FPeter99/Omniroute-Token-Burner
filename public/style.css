@@ -143,6 +143,24 @@ body {
   background: var(--color-danger);
 }
 
+.btn-shutdown {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-shutdown:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
 .engine-badge.burning {
   background: rgba(255, 68, 0, 0.15);
   border-color: var(--color-flame);
