@@ -245,6 +245,15 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (pathname === '/api/export' && req.method === 'GET') {
+    const stats = engine.getStats();
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Content-Disposition': `attachment; filename="burner-session-${Date.now()}.json"`
+    });
+    return res.end(JSON.stringify(stats, null, 2));
+  }
+
   // --- Static Files ---
   let reqPath = pathname === '/' ? '/index.html' : pathname;
   let filePath = path.join(PUBLIC_DIR, reqPath);

@@ -38,6 +38,9 @@ const mode = getArg('mode', 'infinite'); // 'infinite' | 'target' | 'duration'
 const targetTokens = parseInt(getArg('target', '1000000'), 10);
 const durationHours = parseFloat(getArg('duration', '6'));
 const strategy = getArg('strategy', 'prompt_heavy');
+const multiplier = parseFloat(getArg('multiplier', '1'));
+const poolArg = getArg('pool', '');
+const modelPool = poolArg ? poolArg.split(',').map((s) => s.trim()).filter(Boolean) : [model];
 const apiKey = getArg('key', auth.apiKey);
 const baseURL = getArg('url', auth.baseURL);
 
@@ -65,6 +68,8 @@ const engine = new BurnEngine({
   baseURL,
   apiKey,
   model,
+  modelPool,
+  promptSizeMultiplier: multiplier,
   concurrency,
   mode,
   targetTokens,

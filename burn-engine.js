@@ -70,7 +70,9 @@ export class BurnEngine extends EventEmitter {
     this.baseURL = options.baseURL || 'http://localhost:20128/v1';
     this.apiKey = options.apiKey || '';
     this.model = options.model || 'fp99/spam';
-    this.concurrency = Math.max(1, Math.min(60, Number(options.concurrency) || 8));
+    this.modelPool = Array.isArray(options.modelPool) && options.modelPool.length > 0 ? options.modelPool : [this.model];
+    this.promptSizeMultiplier = Number(options.promptSizeMultiplier) || 1;
+    this.concurrency = Math.max(1, Math.min(64, Number(options.concurrency) || 8));
     this.mode = options.mode || 'infinite'; // 'target' | 'duration' | 'infinite'
     this.targetTokens = Number(options.targetTokens) || 1_000_000;
     this.durationMs = (Number(options.durationHours) || 1) * 3600 * 1000;
@@ -114,8 +116,17 @@ export class BurnEngine extends EventEmitter {
       if (!this.baseURL.includes('/v1')) this.baseURL += '/v1';
     }
     if (newConfig.apiKey !== undefined) this.apiKey = newConfig.apiKey;
-    if (newConfig.model) this.model = newConfig.model;
-    if (newConfig.concurrency) this.concurrency = Math.max(1, Math.min(60, Number(newConfig.concurrency)));
+    if (newConfig.modelPool && Array.isArray(newConfig.modelPool) && newConfig.modelPool.length > 0) {
+      this.modelPool = newConfig.modelPool;
+      this.model = this.modelPool[0];
+    } else if (newConfig.model) {
+      this.model = newConfig.model;
+      this.modelPool = [this.model];
+    }
+    if (newConfig.promptSizeMultiplier !== undefined) {
+      this.promptSizeMultiplier = Math.max(0.25, Math.min(8, Number(newConfig.promptSizeMultiplier)));
+    }
+    if (newConfig.concurrency) this.concurrency = Math.max(1, Math.min(64, Number(newConfig.concurrency)));
     if (newConfig.mode) this.mode = newConfig.mode;
     if (newConfig.targetTokens) this.targetTokens = Number(newConfig.targetTokens);
     if (newConfig.durationHours) this.durationMs = Number(newConfig.durationHours) * 3600 * 1000;
@@ -125,11 +136,12 @@ export class BurnEngine extends EventEmitter {
     if (newConfig.maxTokens) this.maxTokens = Number(newConfig.maxTokens);
   }
 
-  generatePromptPayload() {
+  generatePromptPayload(workerId = 0) {
     const salt = this.cacheBuster
       ? `\n[ENTROPY_SALT:${crypto.randomBytes(16).toString('hex')} | TIMESTAMP:${Date.now()} | NONCE:${crypto.randomUUID()}]\n`
       : '';
 
+    const mult = this.promptSizeMultiplier || 1;
     let instruction = '';
     let promptText = '';
     let maxTokens = this.maxTokens;
@@ -139,7 +151,7 @@ export class BurnEngine extends EventEmitter {
         // Fast burst: ~2,000 prompt tokens, short output -> ultra fast turnaround (1-2s)
         maxTokens = 64;
         instruction = 'Briefly extract 2 key architectural tenets from the following text:';
-        const repeats = 6;
+        const repeats = Math.max(2, Math.round(6 * mult));
         const corpus = [];
         for (let i = 0; i < repeats; i++) {
           const para = KNOWLEDGE_PARAGRAPHS[i % KNOWLEDGE_PARAGRAPHS.length];
@@ -149,10 +161,10 @@ export class BurnEngine extends EventEmitter {
         break;
       }
       case 'prompt_heavy': {
-        // Massive input prompt (~7,000 - 10,000 tokens), fast output (128 max_tokens)
+        // Massive input prompt (~7,000 - 10,000 tokens * multiplier), fast output (128 max_tokens)
         maxTokens = Math.min(maxTokens, 128);
         instruction = 'Analyze the following comprehensive corpus thoroughly. Identify the 3 most critical theoretical intersections:';
-        const repeats = 18;
+        const repeats = Math.max(4, Math.round(18 * mult));
         const corpus = [];
         for (let i = 0; i < repeats; i++) {
           const para = KNOWLEDGE_PARAGRAPHS[i % KNOWLEDGE_PARAGRAPHS.length];
@@ -173,7 +185,7 @@ export class BurnEngine extends EventEmitter {
         // Massive prompt AND massive output
         maxTokens = Math.max(maxTokens, 4096);
         instruction = 'Read all supplied system specifications, perform complete rigorous formal verification, and output a complete production-grade implementation of all described algorithms with exhaustive documentation:';
-        const repeats = 28;
+        const repeats = Math.max(6, Math.round(28 * mult));
         const corpus = [];
         for (let i = 0; i < repeats; i++) {
           const para = KNOWLEDGE_PARAGRAPHS[i % KNOWLEDGE_PARAGRAPHS.length];
@@ -185,10 +197,10 @@ export class BurnEngine extends EventEmitter {
       }
       case 'balanced':
       default: {
-        // Medium prompt (~3,000 tokens), generous output (~1024 tokens)
+        // Medium prompt (~3,000 tokens * multiplier), generous output (~1024 tokens)
         maxTokens = Math.min(maxTokens, 1024);
         instruction = 'Review the following multi-domain architectural notes and provide an in-depth breakdown of scaling bottlenecks:';
-        const repeats = 8;
+        const repeats = Math.max(2, Math.round(8 * mult));
         const corpus = [];
         for (let i = 0; i < repeats; i++) {
           corpus.push(KNOWLEDGE_PARAGRAPHS[i % KNOWLEDGE_PARAGRAPHS.length]);
@@ -198,8 +210,13 @@ export class BurnEngine extends EventEmitter {
       }
     }
 
+    // Pick model from pool (shuffle/rotate across workers)
+    const targetModel = (this.modelPool && this.modelPool.length > 0)
+      ? this.modelPool[(workerId + Math.floor(Math.random() * this.modelPool.length)) % this.modelPool.length]
+      : this.model;
+
     return {
-      model: this.model,
+      model: targetModel,
       messages: [
         {
           role: 'system',
@@ -286,7 +303,7 @@ export class BurnEngine extends EventEmitter {
       let logEntry = null;
 
       try {
-        const payload = this.generatePromptPayload();
+        const payload = this.generatePromptPayload(workerId);
         const endpoint = `${this.baseURL}/chat/completions`;
 
         const headers = {
@@ -483,6 +500,8 @@ export class BurnEngine extends EventEmitter {
     return {
       isRunning: this.isRunning,
       model: this.model,
+      modelPool: this.modelPool,
+      promptSizeMultiplier: this.promptSizeMultiplier,
       mode: this.mode,
       concurrency: this.concurrency,
       burnStrategy: this.burnStrategy,

@@ -29,6 +29,8 @@ param(
     [int]$Target = 1000000,
     [double]$DurationHours = 6,
     [string]$Strategy = "prompt_heavy",
+    [double]$Multiplier = 1.0,
+    [string]$Pool = "",
     [string]$ApiKey = "",
     [string]$BaseUrl = "http://localhost:20128/v1"
 )
@@ -106,8 +108,12 @@ $nodeArgs = @(
     "--target", $Target,
     "--duration", $DurationHours,
     "--strategy", $Strategy,
+    "--multiplier", $Multiplier,
     "--url", $BaseUrl
 )
+if ($Pool) {
+    $nodeArgs += @("--pool", $Pool)
+}
 if ($ApiKey) {
     $nodeArgs += @("--key", $ApiKey)
 }

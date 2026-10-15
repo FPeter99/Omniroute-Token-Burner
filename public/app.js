@@ -48,6 +48,11 @@ const btnApplyCustomModel = document.getElementById('btnApplyCustomModel');
 const allModelsOptGroup = document.getElementById('allModelsOptGroup');
 
 const strategySelect = document.getElementById('strategySelect');
+const promptSizeSelect = document.getElementById('promptSizeSelect');
+const multiStackCheck = document.getElementById('multiStackCheck');
+const multiStackTags = document.getElementById('multiStackTags');
+const soundAlertCheck = document.getElementById('soundAlertCheck');
+const btnExportStats = document.getElementById('btnExportStats');
 const concurrencySlider = document.getElementById('concurrencySlider');
 const concurrencyValue = document.getElementById('concurrencyValue');
 const cacheBusterCheck = document.getElementById('cacheBusterCheck');
@@ -74,6 +79,27 @@ function formatTime(seconds) {
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
   return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+}
+
+function playCelebrationSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.12, ctx.currentTime + idx * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.12 + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + idx * 0.12);
+      osc.stop(ctx.currentTime + idx * 0.12 + 0.4);
+    });
+  } catch {}
 }
 
 // Initialize UI
@@ -151,6 +177,26 @@ function setupEventListeners() {
 
   // Stop button
   btnStop.addEventListener('click', stopBurn);
+
+  // Multi-Stack Turbo toggle
+  if (multiStackCheck && multiStackTags) {
+    multiStackCheck.addEventListener('change', () => {
+      multiStackTags.style.display = multiStackCheck.checked ? 'flex' : 'none';
+    });
+
+    multiStackTags.querySelectorAll('.stack-tag input').forEach((chk) => {
+      chk.addEventListener('change', () => {
+        chk.parentElement.classList.toggle('active', chk.checked);
+      });
+    });
+  }
+
+  // Export Stats
+  if (btnExportStats) {
+    btnExportStats.addEventListener('click', () => {
+      window.open('/api/export', '_blank');
+    });
+  }
 
   // Clear logs button
   btnClearLogs.addEventListener('click', () => {
@@ -295,6 +341,9 @@ function connectSSE() {
   eventSource.addEventListener('stopped', (e) => {
     const info = JSON.parse(e.data);
     applyEngineRunningState(false);
+    if (soundAlertCheck && soundAlertCheck.checked && (info.reason === 'target_reached' || info.reason === 'duration_reached')) {
+      playCelebrationSound();
+    }
   });
 }
 
@@ -365,10 +414,22 @@ function applyStatsUpdate(stats) {
 }
 
 async function startBurn() {
+  let modelPool = [modelSelect.value];
+  if (multiStackCheck && multiStackCheck.checked) {
+    const checkedBoxes = Array.from(multiStackTags.querySelectorAll('input:checked'));
+    if (checkedBoxes.length > 0) {
+      modelPool = checkedBoxes.map((c) => c.value);
+    }
+  }
+
+  const promptMult = promptSizeSelect ? parseFloat(promptSizeSelect.value) || 1 : 1;
+
   const payload = {
     baseURL: apiUrlInput.value.trim(),
     apiKey: apiKeyInput.value.trim(),
     model: modelSelect.value,
+    modelPool,
+    promptSizeMultiplier: promptMult,
     concurrency: parseInt(concurrencySlider.value, 10),
     mode: currentMode,
     targetTokens: parseInt(targetTokensInput.value, 10) || 1000000,
