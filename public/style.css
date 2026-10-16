@@ -861,6 +861,22 @@ body {
   color: #ff9966;
 }
 
+.panel-locked-notice {
+  font-size: 12px;
+  color: #ff9966;
+  background: rgba(255, 85, 0, 0.12);
+  border: 1px solid rgba(255, 85, 0, 0.35);
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+fieldset:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 /* Footer */
 .app-footer {
   text-align: center;

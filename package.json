@@ -1,7 +1,7 @@
 {
   "name": "omniroute-token-burner",
   "version": "1.0.0",
-  "description": "High-velocity AI token incinerator for OmniRoute accounts",
+  "description": "Nagysebességű AI token égető OmniRoute fiókokhoz",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -10,7 +10,12 @@
     "cli": "node cli.js",
     "burn": "pwsh -File ./burn.ps1"
   },
-  "keywords": ["omniroute", "ai", "token", "burner"],
+  "keywords": [
+    "omniroute",
+    "ai",
+    "token",
+    "egeto"
+  ],
   "author": "",
   "license": "MIT"
 }

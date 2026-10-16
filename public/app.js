@@ -1,29 +1,28 @@
-// State
+// OmniRoute Token Égető - Webes Kliens
 let isRunning = false;
 let currentMode = 'infinite';
 let eventSource = null;
-let speedHistory = []; // last 60 seconds
+let speedHistory = []; // Utolsó 50 másodperc
 let peakSpeed = 0;
 let logs = [];
 
-// DOM Elements
+// DOM Elemek
 const connectionStatus = document.getElementById('connectionStatus');
 const statusText = connectionStatus.querySelector('.status-text');
 const engineStatusBadge = document.getElementById('engineStatusBadge');
 const engineStatusText = document.getElementById('engineStatusText');
+const btnShutdownServer = document.getElementById('btnShutdownServer');
 
 const valTotalBurned = document.getElementById('valTotalBurned');
 const valPromptTokens = document.getElementById('valPromptTokens');
 const valCompletionTokens = document.getElementById('valCompletionTokens');
 const valSpeed = document.getElementById('valSpeed');
 const valReqSpeed = document.getElementById('valReqSpeed');
-const valAvgLatency = document.getElementById('valAvgLatency');
 const valWorkers = document.getElementById('valWorkers');
 const valSuccessCount = document.getElementById('valSuccessCount');
 const valErrorCount = document.getElementById('valErrorCount');
 const valElapsed = document.getElementById('valElapsed');
 const valModeLabel = document.getElementById('valModeLabel');
-const subTimeGoal = document.getElementById('subTimeGoal');
 
 const progressBarContainer = document.getElementById('progressBarContainer');
 const progressFill = document.getElementById('progressFill');
@@ -32,30 +31,26 @@ const progressLabel = document.getElementById('progressLabel');
 
 const btnStart = document.getElementById('btnStart');
 const btnStop = document.getElementById('btnStop');
+const lockedNotice = document.getElementById('lockedNotice');
+const controlsFieldSet = document.getElementById('controlsFieldSet');
 const btnClearLogs = document.getElementById('btnClearLogs');
 const btnRefreshModels = document.getElementById('btnRefreshModels');
 const refreshIcon = document.getElementById('refreshIcon');
 
-const modeSelector = document.getElementById('modeSelector');
-const targetOptions = document.getElementById('targetOptions');
-const durationOptions = document.getElementById('durationOptions');
-const targetTokensInput = document.getElementById('targetTokensInput');
-const durationHoursInput = document.getElementById('durationHoursInput');
-
 const modelSelect = document.getElementById('modelSelect');
+const recommendedGroup = document.getElementById('recommendedGroup');
+const otherModelsGroup = document.getElementById('otherModelsGroup');
 const customModelInput = document.getElementById('customModelInput');
 const btnApplyCustomModel = document.getElementById('btnApplyCustomModel');
-const allModelsOptGroup = document.getElementById('allModelsOptGroup');
 
-const strategySelect = document.getElementById('strategySelect');
-const promptSizeSelect = document.getElementById('promptSizeSelect');
-const multiStackCheck = document.getElementById('multiStackCheck');
-const multiStackTags = document.getElementById('multiStackTags');
-const soundAlertCheck = document.getElementById('soundAlertCheck');
-const btnExportStats = document.getElementById('btnExportStats');
+const batchSizeSelect = document.getElementById('batchSizeSelect');
 const concurrencySlider = document.getElementById('concurrencySlider');
 const concurrencyValue = document.getElementById('concurrencyValue');
-const cacheBusterCheck = document.getElementById('cacheBusterCheck');
+
+const targetOptions = document.getElementById('targetOptions');
+const targetTokensInput = document.getElementById('targetTokensInput');
+const durationOptions = document.getElementById('durationOptions');
+const durationMinutesInput = document.getElementById('durationMinutesInput');
 
 const apiUrlInput = document.getElementById('apiUrlInput');
 const apiKeyInput = document.getElementById('apiKeyInput');
@@ -66,13 +61,13 @@ const logCountLabel = document.getElementById('logCountLabel');
 const speedChart = document.getElementById('speedChart');
 const chartPeakSpeed = document.getElementById('chartPeakSpeed');
 
-// Format numbers with thousands separators
+// Számok formázása magyar ezres elválasztóval
 function formatNum(n) {
   if (n === null || n === undefined) return '0';
-  return n.toLocaleString('hu-HU');
+  return Number(n).toLocaleString('hu-HU');
 }
 
-// Format seconds into HH:MM:SS
+// Másodpercek formázása ÓÓ:PP:MP formátumba
 function formatTime(seconds) {
   if (!seconds || seconds <= 0) return '00:00:00';
   const h = Math.floor(seconds / 3600);
@@ -81,143 +76,103 @@ function formatTime(seconds) {
   return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
 }
 
-function playCelebrationSound() {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-    const notes = [523.25, 659.25, 783.99, 1046.50];
-    notes.forEach((freq, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.12, ctx.currentTime + idx * 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.12 + 0.35);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + idx * 0.12);
-      osc.stop(ctx.currentTime + idx * 0.12 + 0.4);
+// Eseménykezelők beállítása
+function setupEvents() {
+  btnStart.addEventListener('click', startBurn);
+  btnStop.addEventListener('click', stopBurn);
+
+  if (btnShutdownServer) {
+    btnShutdownServer.addEventListener('click', async () => {
+      if (!confirm('Biztosan leállítod a Token Égető szervert?')) return;
+      try {
+        await fetch('/api/shutdown', { method: 'POST' });
+        alert('A szerver leállt. Bezárhatod ezt az ablakot.');
+      } catch {
+        alert('A leállítási kérés elküldve.');
+      }
     });
-  } catch {}
-}
+  }
 
-// Initialize UI
-async function init() {
-  setupEventListeners();
-  initChart();
-  await loadStatus();
-  await fetchModels();
-  connectSSE();
-}
+  // Szálak csúszkája
+  concurrencySlider.addEventListener('input', (e) => {
+    concurrencyValue.textContent = `${e.target.value} szál`;
+  });
 
-function setupEventListeners() {
-  // Mode switcher
-  modeSelector.querySelectorAll('.seg-btn').forEach((btn) => {
+  // Szál gyorsgombok
+  document.querySelectorAll('.btn-preset-thread').forEach((btn) => {
     btn.addEventListener('click', () => {
-      modeSelector.querySelectorAll('.seg-btn').forEach((b) => b.classList.remove('active'));
+      if (controlsFieldSet.disabled) return;
+      const t = btn.dataset.threads;
+      concurrencySlider.value = t;
+      concurrencyValue.textContent = `${t} szál`;
+    });
+  });
+
+  // Mód választó gombok
+  document.querySelectorAll('#modeSelector .seg-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (controlsFieldSet.disabled) return;
+      document.querySelectorAll('#modeSelector .seg-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       currentMode = btn.dataset.mode;
       updateModeUI();
     });
   });
 
-  // Presets for target
-  document.querySelectorAll('.btn-preset').forEach((btn) => {
+  // Token cél gyorsgombok
+  document.querySelectorAll('.btn-preset-token').forEach((btn) => {
     btn.addEventListener('click', () => {
+      if (controlsFieldSet.disabled) return;
       targetTokensInput.value = btn.dataset.val;
+      valModeLabel.textContent = `Cél: ${formatNum(btn.dataset.val)} tok`;
     });
   });
 
-  // Presets for duration
+  // Időtartam gyorsgombok
   document.querySelectorAll('.btn-preset-time').forEach((btn) => {
     btn.addEventListener('click', () => {
-      durationHoursInput.value = btn.dataset.val;
+      if (controlsFieldSet.disabled) return;
+      durationMinutesInput.value = btn.dataset.val;
+      valModeLabel.textContent = `Időzített: ${btn.dataset.val} perc`;
     });
   });
 
-  // Concurrency slider
-  concurrencySlider.addEventListener('input', (e) => {
-    concurrencyValue.textContent = `${e.target.value} szál`;
-    if (isRunning) {
-      sendConfigUpdate({ concurrency: parseInt(e.target.value, 10) });
-    }
-  });
-
-  // Custom model apply
+  // Egyedi modell hozzáadása
   btnApplyCustomModel.addEventListener('click', () => {
     const custom = customModelInput.value.trim();
     if (!custom) return;
+
     let existingOpt = Array.from(modelSelect.options).find((o) => o.value === custom);
     if (!existingOpt) {
       existingOpt = document.createElement('option');
       existingOpt.value = custom;
       existingOpt.textContent = `★ ${custom}`;
-      modelSelect.appendChild(existingOpt);
+      recommendedGroup.prepend(existingOpt);
     }
     modelSelect.value = custom;
+    localStorage.setItem('omniroute_burner_model', custom);
     customModelInput.value = '';
   });
 
-  // Refresh models button
+  // Modell választás mentése a helyi tárhelyre
+  modelSelect.addEventListener('change', () => {
+    localStorage.setItem('omniroute_burner_model', modelSelect.value);
+  });
+
+  // Modellek frissítése az OmniRoute-ból
   btnRefreshModels.addEventListener('click', async () => {
     refreshIcon.style.animation = 'flame-flicker 0.6s infinite';
     await fetchModels();
     refreshIcon.style.animation = '';
   });
 
-  // Toggle API key visibility
+  // API kulcs láthatóság váltása
   btnToggleKeyVis.addEventListener('click', () => {
     apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
-    btnToggleKeyVis.textContent = apiKeyInput.type === 'password' ? '👁' : '🙈';
+    btnToggleKeyVis.textContent = apiKeyInput.type === 'password' ? '👁' : '🔒';
   });
 
-  // Start button
-  btnStart.addEventListener('click', startBurn);
-
-  // Stop button
-  btnStop.addEventListener('click', stopBurn);
-
-  // Multi-Stack Turbo toggle
-  if (multiStackCheck && multiStackTags) {
-    multiStackCheck.addEventListener('change', () => {
-      multiStackTags.style.display = multiStackCheck.checked ? 'flex' : 'none';
-    });
-
-    multiStackTags.querySelectorAll('.stack-tag input').forEach((chk) => {
-      chk.addEventListener('change', () => {
-        chk.parentElement.classList.toggle('active', chk.checked);
-      });
-    });
-  }
-
-  // Export Stats
-  if (btnExportStats) {
-    btnExportStats.addEventListener('click', () => {
-      window.open('/api/export', '_blank');
-    });
-  }
-
-  // Server shutdown button
-  const btnShutdownServer = document.getElementById('btnShutdownServer');
-  if (btnShutdownServer) {
-    btnShutdownServer.addEventListener('click', async () => {
-      if (confirm('Biztosan leállítod a Token Burner szervert és kilépsz?')) {
-        try {
-          await fetch('/api/shutdown', { method: 'POST' });
-        } catch {}
-        document.body.innerHTML = `
-          <div style="display:flex;height:100vh;align-items:center;justify-content:center;background:#0c0d14;color:#ff5500;font-family:system-ui,sans-serif;flex-direction:column;gap:12px;text-align:center;padding:20px;">
-            <div style="font-size:48px;">🔥</div>
-            <h1 style="font-size:28px;color:#ffffff;">Token Burner Szerver Leállítva</h1>
-            <p style="color:#9ca3af;font-size:14px;">A folyamat és a háttérmotor sikeresen leállt. Most már biztonságosan bezárhatod ezt az ablakot.</p>
-          </div>
-        `;
-      }
-    });
-  }
-
-  // Clear logs button
+  // Napló törlése
   btnClearLogs.addEventListener('click', () => {
     logs = [];
     renderLogs();
@@ -225,26 +180,31 @@ function setupEventListeners() {
 }
 
 function updateModeUI() {
-  targetOptions.style.display = currentMode === 'target' ? 'block' : 'none';
-  durationOptions.style.display = currentMode === 'duration' ? 'block' : 'none';
-
   if (currentMode === 'target') {
-    valModeLabel.textContent = `Cél: ${formatNum(parseInt(targetTokensInput.value, 10))} tok`;
+    targetOptions.style.display = 'block';
+    durationOptions.style.display = 'none';
+    valModeLabel.textContent = `Cél: ${formatNum(targetTokensInput.value)} tok`;
+    progressLabel.textContent = 'Token cél elérése';
   } else if (currentMode === 'duration') {
-    valModeLabel.textContent = `Időzítő: ${durationHoursInput.value} óra`;
+    targetOptions.style.display = 'none';
+    durationOptions.style.display = 'block';
+    valModeLabel.textContent = `Időzített: ${durationMinutesInput.value} perc`;
+    progressLabel.textContent = 'Időtartam haladása';
   } else {
+    targetOptions.style.display = 'none';
+    durationOptions.style.display = 'none';
     valModeLabel.textContent = 'Folyamatos';
+    progressBarContainer.style.display = 'none';
   }
 }
 
-// Fetch Initial Status
+// Kezdeti állapot betöltése
 async function loadStatus() {
   try {
     const res = await fetch('/api/status');
-    if (!res.ok) return;
     const data = await res.json();
-    const defaults = data.detectedDefaults || {};
     const engine = data.engine || {};
+    const defaults = data.detectedDefaults || {};
 
     if (defaults.apiKey && !apiKeyInput.value) {
       apiKeyInput.value = defaults.apiKey;
@@ -253,16 +213,35 @@ async function loadStatus() {
       apiUrlInput.value = defaults.baseURL;
     }
 
+    const savedModel = localStorage.getItem('omniroute_burner_model');
+    if (savedModel) {
+      ensureOptionExists(savedModel);
+      modelSelect.value = savedModel;
+    } else if (defaults.preferredModel) {
+      ensureOptionExists(defaults.preferredModel);
+      modelSelect.value = defaults.preferredModel;
+    }
+
     if (engine.isRunning) {
       applyEngineRunningState(true);
       applyStatsUpdate(engine);
     }
   } catch (err) {
-    console.error('Failed to load status:', err);
+    console.error('Nem sikerült betölteni a kezdeti állapotot:', err);
   }
 }
 
-// Fetch Models from OmniRoute via Backend
+function ensureOptionExists(modelId) {
+  const exists = Array.from(modelSelect.options).some((o) => o.value === modelId);
+  if (!exists) {
+    const opt = document.createElement('option');
+    opt.value = modelId;
+    opt.textContent = `★ ${modelId}`;
+    recommendedGroup.prepend(opt);
+  }
+}
+
+// Modellek lekérése a háttérszervertől
 async function fetchModels() {
   try {
     const baseURL = apiUrlInput.value.trim();
@@ -270,87 +249,53 @@ async function fetchModels() {
     const url = `/api/models?baseURL=${encodeURIComponent(baseURL)}&apiKey=${encodeURIComponent(apiKey)}`;
 
     const res = await fetch(url);
-    if (!res.ok) {
-      console.warn('Could not fetch models directly from OmniRoute');
-      return;
-    }
+    if (!res.ok) return;
+
     const data = await res.json();
-    const combos = data.combos || [];
-    const models = data.models || [];
+    const currentVal = modelSelect.value;
+    const recommended = data.recommended || [];
+    const others = data.others || [];
 
-    // Clear and rebuild modelSelect
-    modelSelect.innerHTML = '';
+    recommendedGroup.innerHTML = '';
+    otherModelsGroup.innerHTML = '';
 
-    const comboGroup = document.createElement('optgroup');
-    comboGroup.label = '🔥 OmniRoute Stacks & Combos';
-
-    for (const c of combos) {
+    for (const m of recommended) {
       const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = c.id;
-      comboGroup.appendChild(opt);
+      opt.value = m.id;
+      opt.textContent = `${m.id}`;
+      recommendedGroup.appendChild(opt);
     }
-    modelSelect.appendChild(comboGroup);
 
-    const modelGroup = document.createElement('optgroup');
-    modelGroup.label = `⚡ További elérhető modellek (${models.length} db)`;
-
-    // Take top 150 models to keep DOM lightweight
-    const sampleModels = models.slice(0, 150);
-    for (const m of sampleModels) {
+    for (const m of others) {
       const opt = document.createElement('option');
       opt.value = m.id;
       opt.textContent = m.id;
-      modelGroup.appendChild(opt);
-    }
-    modelSelect.appendChild(modelGroup);
-
-    // Select sensible default
-    if (combos.some((c) => c.id === 'auto/fast')) {
-      modelSelect.value = 'auto/fast';
-    } else if (combos.length > 0) {
-      modelSelect.value = combos[0].id;
+      otherModelsGroup.appendChild(opt);
     }
 
-    // Dynamically populate Multi-Stack Turbo tags with detected stacks/combos
-    if (multiStackTags) {
-      multiStackTags.innerHTML = '';
-      const poolCandidates = combos.length > 0 ? combos.slice(0, 8) : models.slice(0, 8);
-      if (poolCandidates.length === 0) {
-        multiStackTags.innerHTML = '<span class="text-dim text-sm">Nincsenek elérhető modellek</span>';
-      } else {
-        poolCandidates.forEach((item, index) => {
-          const label = document.createElement('label');
-          label.className = `stack-tag ${index < 3 ? 'active' : ''}`;
-          const chk = document.createElement('input');
-          chk.type = 'checkbox';
-          chk.value = item.id;
-          chk.checked = index < 3;
-          chk.addEventListener('change', () => {
-            label.classList.toggle('active', chk.checked);
-          });
-          label.appendChild(chk);
-          label.appendChild(document.createTextNode(` ${item.id}`));
-          multiStackTags.appendChild(label);
-        });
+    if (currentVal && Array.from(modelSelect.options).some((o) => o.value === currentVal)) {
+      modelSelect.value = currentVal;
+    } else {
+      const saved = localStorage.getItem('omniroute_burner_model');
+      if (saved && Array.from(modelSelect.options).some((o) => o.value === saved)) {
+        modelSelect.value = saved;
       }
     }
   } catch (err) {
-    console.warn('Error fetching models:', err);
+    console.warn('Nem sikerült lekérni a modelleket:', err);
   }
 }
 
-// Connect Server-Sent Events (SSE)
-function connectSSE() {
+// Server-Sent Events (SSE) valós idejű kapcsolat
+function initSSE() {
   if (eventSource) {
     eventSource.close();
   }
-
   eventSource = new EventSource('/api/stream');
 
   eventSource.onopen = () => {
     connectionStatus.className = 'status-badge online';
-    statusText.textContent = 'OmniRoute Online';
+    statusText.textContent = 'OmniRoute Csatlakozva';
   };
 
   eventSource.onerror = () => {
@@ -386,8 +331,12 @@ function connectSSE() {
   eventSource.addEventListener('stopped', (e) => {
     const info = JSON.parse(e.data);
     applyEngineRunningState(false);
-    if (soundAlertCheck && soundAlertCheck.checked && (info.reason === 'target_reached' || info.reason === 'duration_reached')) {
-      playCelebrationSound();
+    if (info.reason === 'target_reached') {
+      alert(`🎯 Gratulálunk! A token cél teljesült: ${formatNum(info.totalTokensBurned)} token elégetve!`);
+    } else if (info.reason === 'duration_reached') {
+      alert(`⏱ Az időzített égetés befejeződött! Összesen elégetve: ${formatNum(info.totalTokensBurned)} token.`);
+    } else if (info.reason === 'context_length_exceeded') {
+      alert('⚠️ A választott modell elutasította a prompt méretét. Kérlek válassz kisebb csomagméretet (Nagy vagy Normál)!');
     }
   });
 }
@@ -397,11 +346,15 @@ function applyEngineRunningState(running) {
   if (running) {
     btnStart.style.display = 'none';
     btnStop.style.display = 'inline-flex';
+    lockedNotice.style.display = 'flex';
+    controlsFieldSet.disabled = true;
     engineStatusBadge.className = 'engine-badge burning';
     engineStatusText.textContent = '🔥 ÉGETÉS FOLYAMATBAN';
   } else {
     btnStart.style.display = 'inline-flex';
     btnStop.style.display = 'none';
+    lockedNotice.style.display = 'none';
+    controlsFieldSet.disabled = false;
     engineStatusBadge.className = 'engine-badge';
     engineStatusText.textContent = 'KÉSZENLÉT';
   }
@@ -422,7 +375,7 @@ function applyStatsUpdate(stats) {
 
   valElapsed.textContent = formatTime(stats.elapsedSeconds || 0);
 
-  // Update speed history for chart
+  // Sebességgörbe adatai a grafikonhoz
   if (stats.isRunning) {
     speedHistory.push(speed);
     if (speedHistory.length > 50) speedHistory.shift();
@@ -433,57 +386,51 @@ function applyStatsUpdate(stats) {
     renderChart();
   }
 
-  // Progress Bar
-  if (stats.mode === 'target' || stats.mode === 'duration') {
+  // Haladási sáv Cél vagy Időzített módban
+  if (stats.mode === 'target') {
     progressBarContainer.style.display = 'block';
+    progressLabel.textContent = 'Token cél elérése';
     const pct = stats.percentComplete || 0;
     progressFill.style.width = `${pct}%`;
     progressPercent.textContent = `${pct}%`;
 
-    if (stats.mode === 'target') {
-      const remaining = stats.targetTokens - stats.totalTokensBurned;
-      progressLabel.textContent = `Cél: ${formatNum(stats.totalTokensBurned)} / ${formatNum(stats.targetTokens)} token (még ${formatNum(Math.max(0, remaining))})`;
-      if (stats.remainingSeconds !== null) {
-        subTimeGoal.innerHTML = `<span>Hátralévő idő: <b>~${formatTime(stats.remainingSeconds)}</b></span>`;
-      }
+    const remaining = stats.targetTokens - stats.totalTokensBurned;
+    if (remaining > 0 && stats.remainingSeconds) {
+      valModeLabel.textContent = `Hátralévő idő: ~${formatTime(stats.remainingSeconds)}`;
     } else {
-      progressLabel.textContent = `Időzítő: ${formatTime(stats.elapsedSeconds)} / ${formatTime(stats.durationMs / 1000)}`;
-      if (stats.remainingSeconds !== null) {
-        subTimeGoal.innerHTML = `<span>Hátralévő: <b>${formatTime(stats.remainingSeconds)}</b></span>`;
-      }
+      valModeLabel.textContent = `Cél: ${formatNum(stats.targetTokens)} tok`;
+    }
+  } else if (stats.mode === 'duration') {
+    progressBarContainer.style.display = 'block';
+    progressLabel.textContent = 'Időtartam haladása';
+    const pct = stats.percentComplete || 0;
+    progressFill.style.width = `${pct}%`;
+    progressPercent.textContent = `${pct}%`;
+
+    if (stats.remainingSeconds !== null && stats.remainingSeconds !== undefined) {
+      valModeLabel.textContent = `Hátralévő idő: ~${formatTime(stats.remainingSeconds)}`;
     }
   } else {
     progressBarContainer.style.display = 'none';
-    subTimeGoal.innerHTML = `<span>Mód: <b>Folyamatos</b></span>`;
   }
 }
 
 async function startBurn() {
-  let modelPool = [modelSelect.value];
-  if (multiStackCheck && multiStackCheck.checked) {
-    const checkedBoxes = Array.from(multiStackTags.querySelectorAll('input:checked'));
-    if (checkedBoxes.length > 0) {
-      modelPool = checkedBoxes.map((c) => c.value);
-    }
-  }
-
-  const promptMult = promptSizeSelect ? parseFloat(promptSizeSelect.value) || 1 : 1;
+  const model = modelSelect.value;
+  localStorage.setItem('omniroute_burner_model', model);
 
   const payload = {
     baseURL: apiUrlInput.value.trim(),
     apiKey: apiKeyInput.value.trim(),
-    model: modelSelect.value,
-    modelPool,
-    promptSizeMultiplier: promptMult,
+    model: model,
+    batchSize: batchSizeSelect.value,
     concurrency: parseInt(concurrencySlider.value, 10),
     mode: currentMode,
     targetTokens: parseInt(targetTokensInput.value, 10) || 1000000,
-    durationHours: parseFloat(durationHoursInput.value) || 6,
-    burnStrategy: strategySelect.value,
-    cacheBuster: cacheBusterCheck.checked,
-    maxTokens: strategySelect.value === 'output_heavy' || strategySelect.value === 'extreme' ? 8192 : 4096
+    durationMinutes: parseFloat(durationMinutesInput.value) || 30
   };
 
+  btnStart.disabled = true;
   try {
     const res = await fetch('/api/start', {
       method: 'POST',
@@ -496,142 +443,127 @@ async function startBurn() {
     }
   } catch (err) {
     alert(`Nem sikerült elérni a szervert: ${err.message}`);
+  } finally {
+    btnStart.disabled = false;
   }
 }
 
 async function stopBurn() {
+  btnStop.disabled = true;
   try {
     await fetch('/api/stop', { method: 'POST' });
   } catch (err) {
-    console.error('Failed to stop:', err);
+    console.error('Nem sikerült leállítani:', err);
+  } finally {
+    btnStop.disabled = false;
   }
 }
 
-async function sendConfigUpdate(config) {
-  try {
-    await fetch('/api/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config)
-    });
-  } catch (err) {
-    console.error('Failed to update config:', err);
-  }
-}
-
-// Logs Management
+// Napló kezelése
 function addLogEntry(log) {
   logs.unshift(log);
-  if (logs.length > 60) logs.pop();
+  if (logs.length > 25) logs.pop();
   renderLogs();
 }
 
 function renderLogs() {
-  logCountLabel.textContent = `${logs.length} naplóbejegyzés`;
   if (logs.length === 0) {
     logsTableBody.innerHTML = `
       <tr class="empty-row">
-        <td colspan="9">A napló üres.</td>
+        <td colspan="7">A rendszer készenlétben áll. Kattints az „ÉGETÉS INDÍTÁSA” gombra!</td>
       </tr>
     `;
+    logCountLabel.textContent = '0 kérés';
     return;
   }
 
-  logsTableBody.innerHTML = logs.map((l) => {
-    const isSuccess = l.status === 'success';
-    const statusBadge = isSuccess
-      ? `<span class="badge-status success">${l.code || 200} OK</span>`
-      : `<span class="badge-status error">${l.code || 'ERR'}</span>`;
+  logCountLabel.textContent = `${logs.length} kérés naplózva`;
+
+  logsTableBody.innerHTML = logs.map((log) => {
+    const isOk = log.status === 'success';
+    const badgeClass = isOk ? 'badge-success' : 'badge-error';
+    const statusText = isOk ? `SIKER (${log.code})` : `HIBA (${log.code})`;
+    const preview = log.preview || log.message || '';
+    const tokensDisplay = isOk ? `<b>${formatNum(log.totalTokens)}</b>` : '-';
 
     return `
       <tr>
-        <td>${l.timestamp}</td>
-        <td>#${l.workerId}</td>
-        <td title="${l.model || ''}">${(l.model || '-').slice(0, 24)}</td>
-        <td>${l.duration} ms</td>
-        <td class="text-dim">${formatNum(l.promptTokens || 0)}</td>
-        <td class="text-dim">${formatNum(l.completionTokens || 0)}</td>
-        <td class="font-bold text-success">${formatNum(l.totalTokens || 0)}</td>
-        <td>${statusBadge}</td>
-        <td class="preview-cell" title="${escapeHtml(l.preview || l.message || '')}">${escapeHtml(l.preview || l.message || '-')}</td>
+        <td class="font-mono text-dim">${log.timestamp}</td>
+        <td class="font-mono">#${log.workerId + 1}</td>
+        <td class="font-mono text-sm">${log.model || '-'}</td>
+        <td class="font-mono">${log.duration} ms</td>
+        <td class="font-mono text-flame">${tokensDisplay}</td>
+        <td><span class="status-pill ${badgeClass}">${statusText}</span></td>
+        <td class="log-preview" title="${preview.replace(/"/g, '&quot;')}">${preview}</td>
       </tr>
     `;
   }).join('');
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (m) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  })[m]);
-}
-
-// Minimal Canvas Chart
-function initChart() {
-  // Fill initial dummy zeros
-  for (let i = 0; i < 40; i++) speedHistory.push(0);
-  renderChart();
-}
-
+// Sebesség görbe rajzolása
 function renderChart() {
+  if (!speedChart) return;
   const ctx = speedChart.getContext('2d');
   const w = speedChart.width;
   const h = speedChart.height;
 
   ctx.clearRect(0, 0, w, h);
 
-  const maxVal = Math.max(1000, ...speedHistory) * 1.15;
-  const stepX = w / (speedHistory.length - 1);
+  if (speedHistory.length < 2) return;
 
-  // Background subtle grid lines
-  ctx.strokeStyle = '#1e2337';
+  const maxVal = Math.max(1000, peakSpeed * 1.1);
+
+  // Finom rácsvonalak
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let y = 0.25; y <= 1; y += 0.25) {
-    const py = h - y * h;
-    ctx.moveTo(0, py);
-    ctx.lineTo(w, py);
+  for (let i = 1; i <= 3; i++) {
+    const y = h - (h / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
   }
-  ctx.stroke();
 
-  // Create flame gradient for area fill
-  const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, 'rgba(255, 85, 0, 0.45)');
-  grad.addColorStop(0.6, 'rgba(255, 140, 0, 0.15)');
-  grad.addColorStop(1, 'rgba(255, 68, 0, 0.0)');
-
-  // Draw area
+  // Simított görbe rajzolása
   ctx.beginPath();
-  ctx.moveTo(0, h);
-  for (let i = 0; i < speedHistory.length; i++) {
-    const x = i * stepX;
-    const y = h - (speedHistory[i] / maxVal) * (h - 20) - 10;
-    if (i === 0) ctx.lineTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.lineTo(w, h);
-  ctx.closePath();
-  ctx.fillStyle = grad;
-  ctx.fill();
+  const step = w / (speedHistory.length - 1);
 
-  // Draw Stroke line
-  ctx.beginPath();
-  for (let i = 0; i < speedHistory.length; i++) {
-    const x = i * stepX;
-    const y = h - (speedHistory[i] / maxVal) * (h - 20) - 10;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  }
-  ctx.strokeStyle = '#ff7700';
+  speedHistory.forEach((val, i) => {
+    const x = i * step;
+    const y = h - (val / maxVal) * (h - 20) - 10;
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      const prevX = (i - 1) * step;
+      const prevY = h - (speedHistory[i - 1] / maxVal) * (h - 20) - 10;
+      const cpX = (prevX + x) / 2;
+      ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y);
+    }
+  });
+
+  ctx.strokeStyle = '#ff5500';
   ctx.lineWidth = 2.5;
-  ctx.shadowColor = '#ff5500';
+  ctx.shadowColor = 'rgba(255, 85, 0, 0.5)';
   ctx.shadowBlur = 10;
   ctx.stroke();
   ctx.shadowBlur = 0;
+
+  // Gradiens kitöltés a vonal alatt
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(255, 85, 0, 0.25)');
+  grad.addColorStop(1, 'rgba(255, 85, 0, 0.0)');
+  ctx.fillStyle = grad;
+  ctx.fill();
 }
 
-// Start
-init();
+// Betöltéskor inicializálás
+document.addEventListener('DOMContentLoaded', async () => {
+  setupEvents();
+  await loadStatus();
+  await fetchModels();
+  initSSE();
+  renderChart();
+});

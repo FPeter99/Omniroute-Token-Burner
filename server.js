@@ -9,11 +9,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
-// Auto-detect default OmniRoute API key and port from environment or OpenCode files
+// OmniRoute hitelesítés és végpont automatikus detektálása a környezetből vagy az OpenCode fájljaiból
 function detectOmniRouteAuth() {
   const result = {
     baseURL: process.env.OMNIROUTE_BASE_URL || 'http://localhost:20128/v1',
-    apiKey: process.env.OMNIROUTE_API_KEY || ''
+    apiKey: process.env.OMNIROUTE_API_KEY || '',
+    preferredModel: 'agy/gemini-3.8-flash-high'
   };
 
   if (!result.apiKey) {
@@ -28,13 +29,8 @@ function detectOmniRouteAuth() {
         }
       }
     } catch {
-      // Ignore detection errors, user can input manually
+      // Detektálási hibák figyelmen kívül hagyása
     }
-  }
-
-  // Leave empty if not detected - user can provide it in UI or via OMNIROUTE_API_KEY
-  if (!result.apiKey) {
-    result.apiKey = '';
   }
 
   return result;
@@ -42,21 +38,19 @@ function detectOmniRouteAuth() {
 
 const detectedAuth = detectOmniRouteAuth();
 
-// Initialize the BurnEngine instance
+// BurnEngine példány inicializálása
 const engine = new BurnEngine({
   baseURL: detectedAuth.baseURL,
   apiKey: detectedAuth.apiKey,
-  model: 'auto/fast',
+  model: detectedAuth.preferredModel || 'auto/fast',
   concurrency: 8,
+  batchSize: 'monster',
   mode: 'infinite',
   targetTokens: 1_000_000,
-  durationHours: 6,
-  burnStrategy: 'prompt_heavy',
-  cacheBuster: true,
-  maxTokens: 4096
+  durationMinutes: 30
 });
 
-// SSE Subscribers Set
+// SSE feliratkozók nyilvántartása
 const sseClients = new Set();
 
 function broadcastSSE(eventType, data) {
@@ -70,14 +64,14 @@ function broadcastSSE(eventType, data) {
   }
 }
 
-// Forward engine events to SSE
+// Motor eseményeinek továbbítása az SSE kliensek felé
 engine.on('stats', (stats) => broadcastSSE('stats', stats));
 engine.on('request_success', (log) => broadcastSSE('request_success', log));
 engine.on('request_failed', (log) => broadcastSSE('request_failed', log));
 engine.on('started', (info) => broadcastSSE('started', info));
 engine.on('stopped', (info) => broadcastSSE('stopped', info));
 
-// Simple static file mime map
+// Statikus fájlok MIME típusai
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
@@ -93,8 +87,8 @@ async function parseBody(req) {
     let body = '';
     req.on('data', (chunk) => {
       body += chunk.toString();
-      if (body.length > 10 * 1024 * 1024) {
-        reject(new Error('Payload too large'));
+      if (body.length > 5 * 1024 * 1024) {
+        reject(new Error('Túl nagy adatmennyiség'));
       }
     });
     req.on('end', () => {
@@ -122,7 +116,7 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
 
-  // CORS headers for development/CLI usage
+  // CORS fejlécek
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
@@ -132,7 +126,7 @@ const server = http.createServer(async (req, res) => {
     return res.end();
   }
 
-  // --- API Endpoints ---
+  // --- API Végpontok ---
   if (pathname === '/api/status' && req.method === 'GET') {
     return sendJSON(res, 200, {
       engine: engine.getStats(),
@@ -168,38 +162,42 @@ const server = http.createServer(async (req, res) => {
         headers['Authorization'] = `Bearer ${targetKey}`;
       }
 
-      const response = await fetch(modelsUrl, { headers });
+      const response = await fetch(modelsUrl, { headers, signal: AbortSignal.timeout(6000) });
       if (!response.ok) {
         const text = await response.text();
-        return sendJSON(res, response.status, { error: `Failed to fetch models: ${text}` });
+        return sendJSON(res, response.status, { error: `Hiba a modellek lekérésekor: ${text}` });
       }
 
       const data = await response.json();
       const rawList = data.data || [];
 
-      // Prioritize combos / routing stacks (auto/*, custom combos, or aliases)
-      const categorized = {
-        combos: [],
-        models: []
-      };
+      // Modellek kategorizálása gyors és egyéb csoportokra
+      const recommended = [];
+      const others = [];
 
       for (const item of rawList) {
         const id = item.id || '';
-        if (id.startsWith('auto/') || id.includes('combo') || (id.includes('/') && !id.startsWith('openai/') && !id.startsWith('google/'))) {
-          categorized.combos.push(item);
+        if (
+          id.includes('gemini') ||
+          id.startsWith('auto/best-fast') ||
+          id.startsWith('auto/fast') ||
+          id.startsWith('auto/coding') ||
+          id.includes('flash')
+        ) {
+          recommended.push(item);
         } else {
-          categorized.models.push(item);
+          others.push(item);
         }
       }
 
       return sendJSON(res, 200, {
         total: rawList.length,
-        combos: categorized.combos,
-        models: categorized.models,
-        all: rawList
+        recommended,
+        others: others.slice(0, 150),
+        allCount: rawList.length
       });
     } catch (err) {
-      return sendJSON(res, 500, { error: err.message || 'Error fetching models' });
+      return sendJSON(res, 500, { error: err.message || 'Hiba a modellek lekérésekor' });
     }
   }
 
@@ -210,7 +208,7 @@ const server = http.createServer(async (req, res) => {
       await engine.start();
       return sendJSON(res, 200, {
         success: true,
-        message: 'Token Burner started',
+        message: 'Az égetés sikeresen elindult',
         stats: engine.getStats()
       });
     } catch (err) {
@@ -220,73 +218,49 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/stop' && req.method === 'POST') {
     try {
-      engine.stop('user_stopped');
+      await engine.stop('felhasznaloi_leallitas');
       return sendJSON(res, 200, {
         success: true,
-        message: 'Token Burner stopped',
+        message: 'Az égetés leállt',
         stats: engine.getStats()
       });
     } catch (err) {
       return sendJSON(res, 500, { success: false, error: err.message });
     }
-  }
-
-  if (pathname === '/api/config' && req.method === 'POST') {
-    try {
-      const body = await parseBody(req);
-      engine.updateConfig(body);
-      return sendJSON(res, 200, {
-        success: true,
-        message: 'Configuration updated',
-        stats: engine.getStats()
-      });
-    } catch (err) {
-      return sendJSON(res, 500, { success: false, error: err.message });
-    }
-  }
-
-  if (pathname === '/api/export' && req.method === 'GET') {
-    const stats = engine.getStats();
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Content-Disposition': `attachment; filename="burner-session-${Date.now()}.json"`
-    });
-    return res.end(JSON.stringify(stats, null, 2));
   }
 
   if (pathname === '/api/shutdown' && req.method === 'POST') {
-    engine.stop('server_shutdown');
-    sendJSON(res, 200, { success: true, message: 'OmniRoute Token Burner server shutting down...' });
+    await engine.stop('szerver_kilepes');
+    sendJSON(res, 200, { success: true, message: 'Leállítás folyamatban...' });
     setTimeout(() => {
-      console.log('\n🛑 Shutdown requested. Exiting process.');
+      console.log('\n🛑 Szerver leállítás kérelmezve. Kilépés a folyamatból.');
       process.exit(0);
-    }, 500);
+    }, 400);
     return;
   }
 
-  // --- Static Files ---
+  // --- Statikus fájlkiszolgálás ---
   let reqPath = pathname === '/' ? '/index.html' : pathname;
   let filePath = path.join(PUBLIC_DIR, reqPath);
 
-  // Security: Prevent path traversal
+  // Biztonság: directory traversal kivédése
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403);
-    return res.end('Access denied');
+    return res.end('Hozzáférés megtagadva');
   }
 
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
-      // Fallback to index.html for SPA routes
       filePath = path.join(PUBLIC_DIR, 'index.html');
     }
 
-    const ext = path.extname(filePath).toLowerCase();
+    const ext = path.extname(filePath);
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
     fs.readFile(filePath, (readErr, content) => {
       if (readErr) {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        return res.end('File not found');
+        res.writeHead(500);
+        return res.end('Belső szerverhiba');
       }
       res.writeHead(200, {
         'Content-Type': contentType,
@@ -297,28 +271,27 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-const DEFAULT_PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 4420;
+const PORT = parseInt(process.env.PORT, 10) || 4420;
+const HOST = '0.0.0.0';
 
-function listenOnPort(port) {
-  server.listen(port, () => {
-    console.log(`\n=================================================`);
-    console.log(`🔥 OMNIROUTE TOKEN BURNER WEB SERVER RUNNING 🔥`);
-    console.log(`=================================================`);
-    console.log(`Local UI:   http://localhost:${port}`);
-    console.log(`OmniRoute:  ${engine.baseURL}`);
-    console.log(`Default Key: ${engine.apiKey ? engine.apiKey.slice(0, 12) + '...' : '(none)'}`);
-    console.log(`Active Model: ${engine.model}`);
-    console.log(`=================================================\n`);
-  });
+server.listen(PORT, HOST, () => {
+  console.log(`\n======================================================`);
+  console.log(`🔥 OMNIROUTE TOKEN ÉGETŐ (Magyarosított & Optimalizált) 🔥`);
+  console.log(`======================================================`);
+  console.log(`Webes Irányítópult: http://localhost:${PORT}`);
+  console.log(`OmniRoute Cím:      ${engine.baseURL}`);
+  console.log(`Alapértelmezett:    ${engine.model}`);
+  console.log(`Alap szálak száma:  ${engine.concurrency} szál | Méret: ${engine.batchSize}`);
+  console.log(`API Kulcs:          ${engine.apiKey ? 'Detektálva (****' + engine.apiKey.slice(-6) + ')' : 'Nem található (add meg a felületen)'}`);
+  console.log(`======================================================\n`);
+});
 
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.warn(`Port ${port} in use, trying port ${port + 1}...`);
-      listenOnPort(port + 1);
-    } else {
-      console.error('Server error:', err);
-    }
-  });
+// Tiszta leállítás SIGINT / SIGTERM esetén
+async function handleExit() {
+  console.log('\n🛑 Leállítás kezdeményezve...');
+  await engine.stop('folyamat_kilepes');
+  process.exit(0);
 }
 
-listenOnPort(DEFAULT_PORT);
+process.on('SIGINT', handleExit);
+process.on('SIGTERM', handleExit);

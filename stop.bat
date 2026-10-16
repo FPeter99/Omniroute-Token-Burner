@@ -1,5 +1,5 @@
 @echo off
-title Stop OmniRoute Token Burner
+title OmniRoute Token Egeto Leallitasa
 cd /d "%~dp0"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0stop.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\stop.ps1
 pause

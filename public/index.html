@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OmniRoute Token Burner 🔥</title>
+  <title>OmniRoute Token Égető 🔥</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -14,8 +14,8 @@
     <div class="header-left">
       <div class="logo-flame">🔥</div>
       <div class="title-group">
-        <h1>OmniRoute Token Burner</h1>
-        <span class="subtitle">High-Velocity AI Token Annihilator for OmniRoute</span>
+        <h1>OmniRoute Token Égető</h1>
+        <span class="subtitle">Nagysebességű Párhuzamosított AI Token Megsemmisítő</span>
       </div>
     </div>
     <div class="header-right">
@@ -27,43 +27,41 @@
         <span class="engine-dot"></span>
         <span class="engine-text" id="engineStatusText">KÉSZENLÉT</span>
       </div>
-      <button id="btnShutdownServer" class="btn-shutdown" title="Szerver és háttérfolyamat teljes leállítása">🛑 Kilépés / Leállítás</button>
+      <button id="btnShutdownServer" class="btn-shutdown" title="Szerver és háttérfolyamatok azonnali leállítása">🛑 Kilépés</button>
     </div>
   </header>
 
   <main class="dashboard-grid">
-    <!-- Top Metrics Overview -->
+    <!-- Felső Fő Mutatók (Metrikák) -->
     <section class="metrics-row">
       <div class="metric-card card-burned">
         <div class="metric-header">
-          <span class="metric-label">ELÉGETETT TOKENEK ÖSSZESEN</span>
+          <span class="metric-label">ELÉGETETT TOKENEK</span>
           <span class="metric-icon">🔥</span>
         </div>
         <div class="metric-value font-mono" id="valTotalBurned">0</div>
         <div class="metric-sub">
           <span>Prompt: <b id="valPromptTokens">0</b></span>
           <span class="separator">•</span>
-          <span>Output: <b id="valCompletionTokens">0</b></span>
+          <span>Válasz: <b id="valCompletionTokens">0</b></span>
         </div>
       </div>
 
       <div class="metric-card card-speed">
         <div class="metric-header">
-          <span class="metric-label">ÉGETÉSI SEBESSÉG</span>
+          <span class="metric-label">ÁTVITELI SEBESSÉG</span>
           <span class="metric-icon">⚡</span>
         </div>
         <div class="metric-value font-mono" id="valSpeed">0 <small>tok/mp</small></div>
         <div class="metric-sub">
-          <span>Kérések: <b id="valReqSpeed">0</b> req/mp</span>
-          <span class="separator">•</span>
-          <span>Átlag válaszidő: <b id="valAvgLatency">0</b> ms</span>
+          <span>Kérések: <b id="valReqSpeed">0</b> / mp</span>
         </div>
       </div>
 
       <div class="metric-card card-workers">
         <div class="metric-header">
-          <span class="metric-label">AKTÍV SZÁLAK ÉS KÉRÉSEK</span>
-          <span class="metric-icon">🚀</span>
+          <span class="metric-label">AKTÍV SZÁLAK & KÉRÉSEK</span>
+          <span class="metric-icon">⚙️</span>
         </div>
         <div class="metric-value font-mono" id="valWorkers">0 / 8</div>
         <div class="metric-sub">
@@ -75,7 +73,7 @@
 
       <div class="metric-card card-time">
         <div class="metric-header">
-          <span class="metric-label">FUTÁSI IDŐ & CÉL</span>
+          <span class="metric-label">ELTELT IDŐ</span>
           <span class="metric-icon">⏱</span>
         </div>
         <div class="metric-value font-mono" id="valElapsed">00:00:00</div>
@@ -85,10 +83,10 @@
       </div>
     </section>
 
-    <!-- Progress bar for Target/Duration modes -->
+    <!-- Haladási sáv Token Cél vagy Időzített módhoz -->
     <div class="progress-bar-container" id="progressBarContainer" style="display: none;">
       <div class="progress-info">
-        <span id="progressLabel">Cél elérése</span>
+        <span id="progressLabel">Haladás a cél felé</span>
         <span id="progressPercent" class="font-mono">0%</span>
       </div>
       <div class="progress-track">
@@ -96,15 +94,15 @@
       </div>
     </div>
 
-    <!-- Main Content: Left Control Panel, Right Live Stream & Chart -->
+    <!-- Fő Vezérlőpult és Élő Adatfolyam -->
     <div class="control-and-feed-row">
-      <!-- Left Panel: Controls & Settings -->
+      <!-- Bal panel: Vezérlők és beállítások -->
       <aside class="control-panel panel-card">
         <div class="panel-header">
-          <h2>Vezérlőpult & Beállítások</h2>
+          <h2>Vezérlőpult</h2>
         </div>
 
-        <!-- Start/Stop Primary Button -->
+        <!-- Fő Indítás / Leállítás Gombok -->
         <div class="action-btn-group">
           <button id="btnStart" class="btn btn-burn">
             <span class="btn-icon">🔥</span>
@@ -116,195 +114,149 @@
           </button>
         </div>
 
-        <!-- Mode Selector -->
-        <div class="form-group">
-          <label class="section-label">Égetési Mód</label>
-          <div class="segmented-control" id="modeSelector">
-            <button type="button" class="seg-btn active" data-mode="infinite">
-              <span class="seg-icon">♾</span>
-              <span>Open / Folyamatos</span>
-            </button>
-            <button type="button" class="seg-btn" data-mode="target">
-              <span class="seg-icon">🎯</span>
-              <span>Token Cél</span>
-            </button>
-            <button type="button" class="seg-btn" data-mode="duration">
-              <span class="seg-icon">⏱</span>
-              <span>Időzített</span>
-            </button>
-          </div>
+        <div id="lockedNotice" class="panel-locked-notice" style="display: none;">
+          <span>🔒 Égetés közben a beállítások zárolva vannak. Módosításhoz állítsd le az égetést.</span>
         </div>
 
-        <!-- Mode specifics: Target settings -->
-        <div class="form-group mode-subgroup" id="targetOptions" style="display: none;">
-          <label for="targetTokensInput">Cél elégetendő token mennyiség:</label>
-          <div class="input-with-presets">
-            <input type="number" id="targetTokensInput" class="form-input font-mono" value="1000000" min="1000" step="50000">
-            <div class="presets-row">
-              <button type="button" class="btn-preset" data-val="100000">100k</button>
-              <button type="button" class="btn-preset" data-val="500000">500k</button>
-              <button type="button" class="btn-preset" data-val="1000000">1M</button>
-              <button type="button" class="btn-preset" data-val="5000000">5M</button>
-              <button type="button" class="btn-preset" data-val="10000000">10M</button>
+        <fieldset id="controlsFieldSet" style="border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px;">
+          <!-- Modell Választó -->
+          <div class="form-group">
+            <div class="label-with-action">
+              <label for="modelSelect" class="section-label">OmniRoute Modell</label>
+              <button type="button" id="btnRefreshModels" class="btn-link" title="Modellek listájának újratöltése">
+                <span id="refreshIcon">🔄</span> Frissítés
+              </button>
+            </div>
+            <select id="modelSelect" class="form-select font-mono">
+              <optgroup label="🚀 Ajánlott gyors modellek" id="recommendedGroup">
+                <option value="agy/gemini-3.8-flash-high" selected>agy/gemini-3.8-flash-high (Ultra-gyors)</option>
+                <option value="auto/best-fast">auto/best-fast</option>
+                <option value="auto/fast">auto/fast</option>
+                <option value="auto/coding">auto/coding</option>
+              </optgroup>
+              <optgroup label="⚡ További elérhető modellek" id="otherModelsGroup">
+              </optgroup>
+            </select>
+            <div class="custom-model-row">
+              <input type="text" id="customModelInput" class="form-input font-mono text-sm" placeholder="Vagy egyedi modell név (pl. gemini-3-flash)...">
+              <button type="button" id="btnApplyCustomModel" class="btn-secondary text-sm">Hozzáad</button>
             </div>
           </div>
-        </div>
 
-        <!-- Mode specifics: Duration settings -->
-        <div class="form-group mode-subgroup" id="durationOptions" style="display: none;">
-          <label for="durationHoursInput">Égetési időtartam (óra):</label>
-          <div class="input-with-presets">
-            <input type="number" id="durationHoursInput" class="form-input font-mono" value="6" min="0.1" max="72" step="0.5">
-            <div class="presets-row">
-              <button type="button" class="btn-preset-time" data-val="0.5">30 perc</button>
-              <button type="button" class="btn-preset-time" data-val="1">1 óra</button>
-              <button type="button" class="btn-preset-time" data-val="3">3 óra</button>
-              <button type="button" class="btn-preset-time" data-val="6">6 óra</button>
-              <button type="button" class="btn-preset-time" data-val="12">12 óra</button>
+          <!-- Égetési Csomagméret / Sebesség -->
+          <div class="form-group">
+            <label for="batchSizeSelect" class="section-label">Égetési Csomagméret (Sebesség)</label>
+            <select id="batchSizeSelect" class="form-select">
+              <option value="monster" selected>💥 Monster Méret (~65 000 token/kérés - Leggyorsabb)</option>
+              <option value="large">⚡ Nagy Méret (~35 000 token/kérés)</option>
+              <option value="normal">🏃 Normál Méret (~15 000 token/kérés - Kisebb modellekhez)</option>
+            </select>
+          </div>
+
+          <!-- Párhuzamos Szálak (Concurrency) Slider -->
+          <div class="form-group">
+            <div class="label-with-action">
+              <label for="concurrencySlider" class="section-label">Párhuzamos Szálak</label>
+              <span id="concurrencyValue" class="badge-value font-mono">8 szál</span>
+            </div>
+            <input type="range" id="concurrencySlider" class="form-range" min="1" max="64" value="8" step="1">
+            <div class="presets-row" style="margin-top: 4px;">
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="4">4 szál</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="8">8 szál (Ajánlott)</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="16">16 szál</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="24">24 szál</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="32">32 szál</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="64">64 szál</button>
             </div>
           </div>
-        </div>
 
-        <!-- Stack & Model Selection -->
-        <div class="form-group">
-          <div class="label-with-action">
-            <label for="modelSelect" class="section-label">Stack / Modell Választó</label>
-            <button type="button" id="btnRefreshModels" class="btn-link" title="Modellek frissítése az OmniRoute-ból">
-              <span id="refreshIcon">🔄</span> Frissítés
-            </button>
-          </div>
-          <select id="modelSelect" class="form-select font-mono">
-            <optgroup label="🔥 OmniRoute Stacks & Combos" id="combosOptGroup">
-              <option value="auto/fast" selected>auto/fast (Smart Auto Fast Stack)</option>
-              <option value="auto/best-coding">auto/best-coding</option>
-              <option value="auto/best-fast">auto/best-fast</option>
-              <option value="auto/coding">auto/coding</option>
-              <option value="auto/cheap">auto/cheap</option>
-            </optgroup>
-            <optgroup label="⚡ Elérhető Modellek" id="allModelsOptGroup">
-              <option value="auto/smart">auto/smart</option>
-            </optgroup>
-          </select>
-          <div class="custom-model-row">
-            <input type="text" id="customModelInput" class="form-input font-mono text-sm" placeholder="Vagy írj be egyedi modell/stack nevet...">
-            <button type="button" id="btnApplyCustomModel" class="btn-secondary text-sm">Alkalmaz</button>
-          </div>
-
-          <!-- Turbo Multi-Stack Pool Switcher -->
-          <div class="multi-stack-box">
-            <label class="checkbox-container text-sm">
-              <input type="checkbox" id="multiStackCheck">
-              <span class="checkmark"></span>
-              <span class="checkbox-text">
-                <strong>🔥 Multi-Stack Turbo Pool (Rotáció)</strong>
-                <small>Kérések szétosztása több stack között a maximális átviteli sebességért és 0 rate-limit megakadásért.</small>
-              </span>
-            </label>
-            <div id="multiStackTags" class="stack-tags-row" style="display: none;">
-              <span class="text-dim text-sm" id="multiStackLoading">Modellek betöltése az OmniRoute-ból...</span>
+          <!-- Égetési Mód Választó -->
+          <div class="form-group">
+            <label class="section-label">Égetési Mód</label>
+            <div class="segmented-control" id="modeSelector">
+              <button type="button" class="seg-btn active" data-mode="infinite">
+                <span class="seg-icon">♾</span>
+                <span>Folyamatos</span>
+              </button>
+              <button type="button" class="seg-btn" data-mode="target">
+                <span class="seg-icon">🎯</span>
+                <span>Token Cél</span>
+              </button>
+              <button type="button" class="seg-btn" data-mode="duration">
+                <span class="seg-icon">⏱</span>
+                <span>Időzített</span>
+              </button>
             </div>
           </div>
-        </div>
 
-        <!-- Prompt Size Multiplier -->
-        <div class="form-group">
-          <label for="promptSizeSelect" class="section-label">Prompt Méret / Multiplier (Token Bomba)</label>
-          <select id="promptSizeSelect" class="form-select">
-            <option value="1" selected>Normál Méret (~8 000 - 10 000 token / kérés)</option>
-            <option value="2">⚡ Dupla Méret (~16 000 - 20 000 token / kérés)</option>
-            <option value="4">🚀 Brutális Méret (~32 000 - 40 000 token / kérés)</option>
-            <option value="8">💥 Monster Méret (~64 000 - 80 000 token / kérés)</option>
-          </select>
-        </div>
-
-        <!-- Burn Strategy -->
-        <div class="form-group">
-          <label for="strategySelect" class="section-label">Égetési Stratégia</label>
-          <select id="strategySelect" class="form-select">
-            <option value="prompt_heavy" selected>🚀 Prompt Flooding (~8 000-10 000 token / kérés)</option>
-            <option value="hyper_speed">⚡ Hyper-Speed (~2 000 token, ultra-gyors válaszidő)</option>
-            <option value="balanced">⚖️ Balanced (Közepes prompt + 1024 kimenet)</option>
-            <option value="output_heavy">📜 Output Exhaustion (Kis prompt, max 4096-8192 generálás)</option>
-            <option value="extreme">💥 Extreme Chaos (Hatalmas prompt ÉS maximális kimenet)</option>
-          </select>
-        </div>
-
-        <!-- Concurrency slider -->
-        <div class="form-group">
-          <div class="label-with-action">
-            <label for="concurrencySlider" class="section-label">Párhuzamos Szálak (Concurrency)</label>
-            <span id="concurrencyValue" class="badge-value font-mono">8 szál</span>
+          <!-- Mód albeállítás: Token Cél -->
+          <div class="form-group mode-subgroup" id="targetOptions" style="display: none;">
+            <label for="targetTokensInput">Cél elégetendő token mennyiség:</label>
+            <div class="input-with-presets">
+              <input type="number" id="targetTokensInput" class="form-input font-mono" value="1000000" min="50000" step="100000">
+              <div class="presets-row">
+                <button type="button" class="btn-preset btn-preset-token" data-val="500000">500k</button>
+                <button type="button" class="btn-preset btn-preset-token" data-val="1000000">1M</button>
+                <button type="button" class="btn-preset btn-preset-token" data-val="5000000">5M</button>
+                <button type="button" class="btn-preset btn-preset-token" data-val="10000000">10M</button>
+                <button type="button" class="btn-preset btn-preset-token" data-val="20000000">20M</button>
+              </div>
+            </div>
           </div>
-          <input type="range" id="concurrencySlider" class="form-range" min="1" max="64" value="8" step="1">
-          <div class="range-marks">
-            <span>1</span>
-            <span>8 (alap)</span>
-            <span>24 (gyors)</span>
-            <span>48 (turbo)</span>
-            <span>64 (extrém)</span>
+
+          <!-- Mód albeállítás: Időzített Égetés -->
+          <div class="form-group mode-subgroup" id="durationOptions" style="display: none;">
+            <label for="durationMinutesInput">Égetési időtartam (percben):</label>
+            <div class="input-with-presets">
+              <input type="number" id="durationMinutesInput" class="form-input font-mono" value="30" min="1" step="5">
+              <div class="presets-row">
+                <button type="button" class="btn-preset btn-preset-time" data-val="5">5 perc</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="15">15 perc</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="30">30 perc</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="60">1 óra</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="120">2 óra</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="360">6 óra</button>
+              </div>
+            </div>
           </div>
-        </div>
+        </fieldset>
 
-        <!-- Additional options -->
-        <div class="form-group">
-          <label class="checkbox-container">
-            <input type="checkbox" id="cacheBusterCheck" checked>
-            <span class="checkmark"></span>
-            <span class="checkbox-text">
-              <strong>Cache-Buster bekapcsolva</strong>
-              <small>Minden promptba véletlenszerű adatot szúr be, így az OmniRoute nem tud olcsó cache-readet használni, 100% token égetés történik.</small>
-            </span>
-          </label>
-        </div>
-
-        <div class="form-group">
-          <label class="checkbox-container">
-            <input type="checkbox" id="soundAlertCheck" checked>
-            <span class="checkmark"></span>
-            <span class="checkbox-text">
-              <strong>🔔 Hangjelzés a cél elérésekor</strong>
-              <small>Lágy hangjelzés szólal meg, amint a token cél vagy az időtartam teljesül.</small>
-            </span>
-          </label>
-        </div>
-
-        <!-- OmniRoute Connection Details (Collapsible) -->
-        <details class="connection-details">
+        <!-- OmniRoute Kapcsolat (Lenyitható panel) -->
+        <details class="connection-details" style="margin-top: 8px;">
           <summary>OmniRoute Kapcsolat & API Kulcs</summary>
           <div class="details-body">
             <div class="form-group">
-              <label for="apiUrlInput">OmniRoute Base URL:</label>
+              <label for="apiUrlInput">OmniRoute Végpont Cím:</label>
               <input type="text" id="apiUrlInput" class="form-input font-mono text-sm" value="http://localhost:20128/v1">
             </div>
             <div class="form-group">
               <label for="apiKeyInput">OmniRoute API Kulcs:</label>
               <div class="password-wrapper">
                 <input type="password" id="apiKeyInput" class="form-input font-mono text-sm" placeholder="sk-...">
-                <button type="button" id="btnToggleKeyVis" class="btn-toggle-eye">👁</button>
+                <button type="button" id="btnToggleKeyVis" class="btn-toggle-eye" title="Megjelenítés">👁</button>
               </div>
-              <small class="help-text">Automatikusan felismerve az OpenCode konfigurációból.</small>
+              <small class="help-text">Automatikusan felismerve a helyi OpenCode konfigurációból.</small>
             </div>
           </div>
         </details>
       </aside>
 
-      <!-- Right Panel: Live Performance & Request Stream -->
+      <!-- Jobb panel: Élő Teljesítmény Grafikon & Kérés Napló -->
       <section class="live-panel panel-card">
         <div class="panel-header">
           <div class="panel-header-left">
             <h2>Élő Égetési Folyamat</h2>
-            <span class="live-pill"><span class="live-pill-dot"></span> LIVE</span>
+            <span class="live-pill"><span class="live-pill-dot"></span> ÉLŐ</span>
           </div>
           <div class="panel-header-right">
-            <button id="btnExportStats" class="btn-secondary text-sm">📊 Riport Export</button>
-            <button id="btnClearLogs" class="btn-secondary text-sm">Napló törlése</button>
+            <button id="btnClearLogs" class="btn-secondary text-sm">Napló ürítése</button>
           </div>
         </div>
 
-        <!-- Real-time Speed Chart -->
+        <!-- Valós idejű sebességgörbe grafikon -->
         <div class="chart-box">
           <div class="chart-header">
-            <span>Sebesség Görbe (Token / másodperc)</span>
+            <span>Sebességgörbe (Token / másodperc)</span>
             <span id="chartPeakSpeed" class="font-mono text-sm text-dim">Csúcs: 0 tok/s</span>
           </div>
           <div class="canvas-wrapper">
@@ -312,11 +264,11 @@
           </div>
         </div>
 
-        <!-- Recent Logs Table -->
+        <!-- Legutóbbi kérések naplója -->
         <div class="logs-container">
           <div class="logs-header-bar">
-            <span>Legutóbbi OmniRoute kérések és válaszok</span>
-            <span id="logCountLabel" class="text-dim text-sm">0 naplóbejegyzés</span>
+            <span>Legutóbbi kérések állapota</span>
+            <span id="logCountLabel" class="text-dim text-sm">0 kérés</span>
           </div>
           <div class="table-responsive">
             <table class="logs-table">
@@ -324,18 +276,16 @@
                 <tr>
                   <th>Idő</th>
                   <th>Szál</th>
-                  <th>Modell / Stack</th>
-                  <th>Idő (ms)</th>
-                  <th>Prompt T</th>
-                  <th>Output T</th>
-                  <th>Összes T</th>
+                  <th>Modell</th>
+                  <th>Időtartam</th>
+                  <th>Elégetett Token</th>
                   <th>Állapot</th>
-                  <th>Válasz Előnézet</th>
+                  <th>Válasz / Részlet</th>
                 </tr>
               </thead>
               <tbody id="logsTableBody">
                 <tr class="empty-row">
-                  <td colspan="9">Még nem fut égetés. Kattints a fenti "ÉGETÉS INDÍTÁSA" gombra!</td>
+                  <td colspan="7">A rendszer készenlétben áll. Kattints az „ÉGETÉS INDÍTÁSA” gombra!</td>
                 </tr>
               </tbody>
             </table>
@@ -344,10 +294,6 @@
       </section>
     </div>
   </main>
-
-  <footer class="app-footer">
-    <span>OmniRoute Token Burner v1.0 • Kifejezetten OmniRoute multi-account rendszerekhez és OpenCode-hoz tervezve</span>
-  </footer>
 
   <script src="/app.js"></script>
 </body>
