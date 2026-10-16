@@ -1,22 +1,22 @@
 <#
 .SYNOPSIS
-    OmniRoute Token Égető - Nagysebességű AI Token Égető
+    OmniRoute Token Burner - High-Velocity AI Token Incinerator
 
 .DESCRIPTION
-    Felesleges vagy lejáró AI tokenek gyors, párhuzamos és stabil elégetése OmniRoute-on keresztül.
-    Támogatja a Web Dashboardot és a közvetlen CLI módot is.
+    Fast, reliable, and parallel AI token burner for OmniRoute environments.
+    Supports both Web Dashboard and CLI modes.
 
 .EXAMPLE
     .\burn.ps1
-    (Megnyitja az interaktív menüt vagy a Web Dashboardot)
+    (Opens interactive menu or Web Dashboard)
 
 .EXAMPLE
     .\burn.ps1 -Web
-    (Közvetlenül elindítja a Webes felületet és megnyitja a böngészőt)
+    (Launches Web UI and opens the browser)
 
 .EXAMPLE
     .\burn.ps1 -Model "agy/gemini-3.8-flash-high" -Concurrency 16 -Mode target -Target 5000000
-    (5.000.000 token elégetése CLI-ben 16 szálon)
+    (Burns 5,000,000 tokens in CLI with 16 threads)
 #>
 
 [CmdletBinding()]
@@ -39,31 +39,31 @@ Set-Location -LiteralPath $PSScriptRoot
 
 Write-Host ""
 Write-Host " ================================================= " -ForegroundColor Red
-Write-Host "      🔥 OMNIROUTE TOKEN ÉGETŐ (POWERSHELL) 🔥      " -ForegroundColor Yellow -BackgroundColor Black
+Write-Host "      🔥 OMNIROUTE TOKEN BURNER (POWERSHELL) 🔥      " -ForegroundColor Yellow -BackgroundColor Black
 Write-Host " ================================================= " -ForegroundColor Red
 Write-Host ""
 
-# Ha a -Web kapcsoló aktív, azonnal indítsuk a web szervert
+# Launch web dashboard directly if -Web switch is passed
 if ($Web) {
-    Write-Host "[*] Webes Irányítópult indítása: http://localhost:4420" -ForegroundColor Cyan
+    Write-Host "[*] Launching Web Dashboard: http://localhost:4420" -ForegroundColor Cyan
     Start-Process "http://localhost:4420"
     & node server.js
     exit
 }
 
-# Ha paraméterek nélkül hívták meg, interaktív választó
+# Interactive selection if called without arguments
 $isInteractive = (-not $PSBoundParameters.ContainsKey('Mode') -and -not $PSBoundParameters.ContainsKey('Model') -and -not $PSBoundParameters.ContainsKey('Target'))
 
 if ($isInteractive) {
-    Write-Host "Válassz indítási módot:" -ForegroundColor White
-    Write-Host "  [1] Webes Irányítópult (Ajánlott, letisztult grafikus felület)" -ForegroundColor Green
-    Write-Host "  [2] CLI égetés ebben az ablakban (Folyamatos égetés, Monster méret)" -ForegroundColor Cyan
-    Write-Host "  [3] CLI égetés Token Cél alapján (pl. 1.000.000 token)" -ForegroundColor Yellow
-    Write-Host "  [4] CLI égetés Időzített módban (pl. 30 perc)" -ForegroundColor Magenta
-    Write-Host "  [Q] Kilépés" -ForegroundColor DarkGray
+    Write-Host "Select execution mode:" -ForegroundColor White
+    Write-Host "  [1] Open Web Dashboard (Recommended, polished UI)" -ForegroundColor Green
+    Write-Host "  [2] CLI Continuous Burn in this terminal (Monster size)" -ForegroundColor Cyan
+    Write-Host "  [3] CLI Token Target Burn (e.g. 1,000,000 tokens)" -ForegroundColor Yellow
+    Write-Host "  [4] CLI Timed Duration Burn (e.g. 30 minutes)" -ForegroundColor Magenta
+    Write-Host "  [Q] Exit" -ForegroundColor DarkGray
     Write-Host ""
 
-    $choice = Read-Host "Választásod (1/2/3/4/Q)"
+    $choice = Read-Host "Choice (1/2/3/4/Q)"
     switch ($choice.Trim()) {
         "1" {
             Start-Process "http://localhost:4420"
@@ -75,14 +75,14 @@ if ($isInteractive) {
         }
         "3" {
             $Mode = "target"
-            $customTarget = Read-Host "Cél token mennyiség [Alapértelmezett: 1000000]"
+            $customTarget = Read-Host "Target token count [Default: 1000000]"
             if ($customTarget -match '^\d+$') {
                 $Target = [int]$customTarget
             }
         }
         "4" {
             $Mode = "duration"
-            $customMinutes = Read-Host "Időtartam percben [Alapértelmezett: 30]"
+            $customMinutes = Read-Host "Duration in minutes [Default: 30]"
             if ($customMinutes -match '^\d+$') {
                 $DurationMinutes = [double]$customMinutes
             }
@@ -90,7 +90,7 @@ if ($isInteractive) {
         "Q" { exit }
         "q" { exit }
         default {
-            Write-Host "Alapértelmezés: Webes Irányítópult indítása..." -ForegroundColor Cyan
+            Write-Host "Defaulting to Web Dashboard..." -ForegroundColor Cyan
             Start-Process "http://localhost:4420"
             & node server.js
             exit
@@ -98,7 +98,7 @@ if ($isInteractive) {
     }
 }
 
-# CLI futtatás node cli.js meghívásával
+# Execute CLI mode
 $nodeArgs = @(
     "cli.js",
     "--model", $Model,

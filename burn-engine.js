@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import crypto from 'node:crypto';
 
-// Sűrű, szintetikus tudásbázis a gyors prompt égetéshez
+// Dense synthetic corpus for rapid prompt consumption
 const TECHNICAL_CORPUS_BASE = [
   "In the formal analysis of computational complexity, the distinction between deterministic polynomial time (P) and non-deterministic polynomial time (NP) remains the most prominent open problem in theoretical computer science. An algorithm operates within time complexity O(n^k) where n is the input parameter dimension and k is an invariant exponent.",
   "Thermodynamic entropy represents the microscopic degeneracy of states accessible to a macroscopic thermodynamic manifold. Under Boltzmann's foundational formulation S = k_B * ln(Omega), the logarithmic scale maps macrostates directly onto microstate combinatorics, inherently coupling information theory and physical state preservation.",
@@ -11,12 +11,12 @@ const TECHNICAL_CORPUS_BASE = [
   "Advanced compiler optimization passes perform static single assignment (SSA) transformations, dominance frontier analyses, dead-code elimination, and polyhedral loop auto-parallelization to maximize instruction-level parallelism (ILP) and cache hierarchy utilization."
 ].join(' ');
 
-// Előre összeállított korpusz szövegek a maximális sebességért (minimális CPU terhelés a ciklusban)
-const CORPUS_NORMAL = TECHNICAL_CORPUS_BASE.repeat(16);  // ~15 000 token
-const CORPUS_LARGE = TECHNICAL_CORPUS_BASE.repeat(36);   // ~35 000 token
-const CORPUS_MONSTER = TECHNICAL_CORPUS_BASE.repeat(68); // ~65 000 token
+// Pre-assembled corpus blocks for maximum speed (zero per-request CPU overhead)
+const CORPUS_NORMAL = TECHNICAL_CORPUS_BASE.repeat(16);  // ~15,000 tokens
+const CORPUS_LARGE = TECHNICAL_CORPUS_BASE.repeat(36);   // ~35,000 tokens
+const CORPUS_MONSTER = TECHNICAL_CORPUS_BASE.repeat(68); // ~65,000 tokens
 
-// Segédfüggvény: azonnal megszakítható várakozás abort jelzésre
+// Helper: abortable delay for graceful cancellation
 function abortableSleep(ms, signal) {
   return new Promise((resolve) => {
     if (signal?.aborted) return resolve();
@@ -47,9 +47,9 @@ export class BurnEngine extends EventEmitter {
     this.mode = options.mode || 'infinite'; // 'infinite' | 'target' | 'duration'
     this.targetTokens = Number(options.targetTokens) || 1_000_000;
     this.durationMs = (Number(options.durationMinutes) || (Number(options.durationHours) * 60) || 30) * 60 * 1000;
-    this.maxTokens = 16; // Gyors válaszgenerálás a maximális prompt égetési sebességért
+    this.maxTokens = 16; // Minimal completion for maximum prompt consumption rate
 
-    // Állapotkövetés
+    // State tracking
     this.isRunning = false;
     this.currentSessionId = null;
     this.startTime = null;
@@ -59,7 +59,7 @@ export class BurnEngine extends EventEmitter {
     this.reqCounter = 0;
     this.consecutiveErrors = 0;
 
-    // Statisztika
+    // Statistics
     this.stats = {
       totalTokensBurned: 0,
       totalPromptTokens: 0,
@@ -76,7 +76,7 @@ export class BurnEngine extends EventEmitter {
       recentLogs: []
     };
 
-    // Gördülő mintaablak a pontos átviteli sebesség méréséhez
+    // Rolling samples window for accurate throughput calculation
     this.rollingSamples = [];
     this.statsInterval = null;
   }
@@ -135,9 +135,9 @@ export class BurnEngine extends EventEmitter {
   }
 
   async start() {
-    // Ha már fut, tiszta leállítás először
+    // If already running, perform clean stop first
     if (this.isRunning) {
-      await this.stop('újraindítás');
+      await this.stop('restart');
     }
 
     this.isRunning = true;
@@ -149,7 +149,7 @@ export class BurnEngine extends EventEmitter {
     this.rollingSamples = [];
     this.consecutiveErrors = 0;
 
-    // Munkamenet statisztika nullázása
+    // Reset session statistics
     this.stats.totalTokensBurned = 0;
     this.stats.totalPromptTokens = 0;
     this.stats.totalCompletionTokens = 0;
@@ -166,12 +166,12 @@ export class BurnEngine extends EventEmitter {
       batchSize: this.batchSize
     });
 
-    // Háttér statisztika frissítés (500 ms)
+    // Background telemetry ticker (500 ms)
     this.statsInterval = setInterval(() => {
       this.computeMetrics();
       this.emit('stats', this.getStats());
 
-      // Cél elérése ellenőrzése
+      // Check termination conditions
       if (this.mode === 'target' && this.stats.totalTokensBurned >= this.targetTokens) {
         this.stop('target_reached');
       } else if (this.mode === 'duration') {
@@ -182,7 +182,7 @@ export class BurnEngine extends EventEmitter {
       }
     }, 500);
 
-    // Munkaszálak (workers) indítása fokozatos eltolással
+    // Launch worker pool with staggered start
     this.workers = [];
     for (let i = 0; i < this.concurrency; i++) {
       this.workers.push(this.runWorkerLoop(i, sessionId));
@@ -192,14 +192,14 @@ export class BurnEngine extends EventEmitter {
   async runWorkerLoop(workerId, sessionId) {
     const signal = this.abortController?.signal;
 
-    // Szálankénti indítási eltolás (50 ms szálanként, max 1.5 másodpercig)
+    // Worker stagger delay (50 ms per worker, max 1.5s) to avoid sudden socket spikes
     const initialDelay = Math.min(1500, workerId * 50);
     if (initialDelay > 0) {
       await abortableSleep(initialDelay, signal);
     }
 
     while (this.isRunning && this.currentSessionId === sessionId && !signal?.aborted) {
-      // Célok ellenőrzése kérés előtt
+      // Check termination before making request
       if (this.mode === 'target' && this.stats.totalTokensBurned >= this.targetTokens) {
         this.stop('target_reached');
         break;
@@ -222,7 +222,7 @@ export class BurnEngine extends EventEmitter {
           headers['Authorization'] = `Bearer ${this.apiKey}`;
         }
 
-        // Kérés időtúllépés: 25 mp kérésenként
+        // Request timeout: 25s per request
         const timeoutSignal = AbortSignal.timeout(25000);
         const combinedSignal = AbortSignal.any
           ? AbortSignal.any([signal, timeoutSignal])
@@ -238,26 +238,26 @@ export class BurnEngine extends EventEmitter {
         const reqDuration = Date.now() - reqStart;
 
         if (!response.ok) {
-          const errText = await response.text().catch(() => 'Ismeretlen hiba');
+          const errText = await response.text().catch(() => 'Unknown error');
           this.stats.totalRequests++;
           this.stats.failedRequests++;
           this.consecutiveErrors++;
 
           let userFriendlyMsg = `HTTP ${response.status}: ${errText.slice(0, 140)}`;
           if (response.status === 401) {
-            userFriendlyMsg = 'Érvénytelen API kulcs! (401 Unauthorized)';
+            userFriendlyMsg = 'Invalid API Key! (401 Unauthorized)';
           } else if (response.status === 404) {
-            userFriendlyMsg = `A megadott modell (${this.model}) nem található (404)!`;
+            userFriendlyMsg = `Specified model (${this.model}) not found (404)!`;
           } else if (response.status === 400 && (errText.includes('context') || errText.includes('tokens') || errText.includes('maximum'))) {
-            userFriendlyMsg = 'A modell nem támogatja ezt a prompt méretet! Válassz kisebb csomagméretet (Nagy vagy Normál)!';
+            userFriendlyMsg = 'Model context length exceeded! Select a smaller payload size (Large or Normal).';
           } else if (response.status === 429) {
-            userFriendlyMsg = 'Túl sok kérés (429 Rate Limit) - automatikus várakozás...';
+            userFriendlyMsg = 'Rate limit reached (HTTP 429) - auto backoff...';
           }
 
           logEntry = {
             id: crypto.randomUUID().slice(0, 8),
             workerId,
-            timestamp: new Date().toLocaleTimeString('hu-HU'),
+            timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
             duration: reqDuration,
             status: 'error',
             code: response.status,
@@ -267,19 +267,19 @@ export class BurnEngine extends EventEmitter {
           this.pushLog(logEntry);
           this.emit('request_failed', logEntry);
 
-          // Leállás hibás hitelesítés vagy hiányzó modell esetén
+          // Terminate on fatal auth or missing model errors
           if (response.status === 401 || response.status === 404) {
-            await this.stop(`hiba_${response.status}`);
+            await this.stop(`error_${response.status}`);
             break;
           }
 
-          // Ha túl sok 400-as kontextus hiba érkezik, azonnali tiszta leállás
+          // Terminate on persistent context length errors
           if (this.consecutiveErrors >= 6 && response.status === 400) {
             await this.stop('context_length_exceeded');
             break;
           }
 
-          // Biztonságos várakozás hiba esetén
+          // Error backoff
           if (response.status === 429 || response.status === 503) {
             await abortableSleep(2000, signal);
           } else {
@@ -301,7 +301,7 @@ export class BurnEngine extends EventEmitter {
         this.stats.totalPromptTokens += promptTokens;
         this.stats.totalCompletionTokens += completionTokens;
 
-        // Statisztikai gördülő minta mentése
+        // Record rolling sample
         this.rollingSamples.push({
           time: Date.now(),
           tokens: totalTokens
@@ -313,7 +313,7 @@ export class BurnEngine extends EventEmitter {
         logEntry = {
           id: crypto.randomUUID().slice(0, 8),
           workerId,
-          timestamp: new Date().toLocaleTimeString('hu-HU'),
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
           duration: reqDuration,
           status: 'success',
           code: response.status,
@@ -337,15 +337,15 @@ export class BurnEngine extends EventEmitter {
 
         let errorMsg = err.message || String(err);
         if (err.name === 'TimeoutError' || errorMsg.includes('timeout')) {
-          errorMsg = 'Időtúllépés (25 mp). Az OmniRoute / modell lassú vagy foglalt.';
+          errorMsg = 'Request timed out (25s). OmniRoute or model is overloaded.';
         } else if (errorMsg.includes('fetch failed')) {
-          errorMsg = 'Hálózati hiba (kapcsolat megszakadt vagy az OmniRoute nem elérhető).';
+          errorMsg = 'Network failure: connection lost or OmniRoute is unreachable.';
         }
 
         logEntry = {
           id: crypto.randomUUID().slice(0, 8),
           workerId,
-          timestamp: new Date().toLocaleTimeString('hu-HU'),
+          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
           duration: Date.now() - reqStart,
           status: 'error',
           code: 'FETCH_ERR',
@@ -356,7 +356,7 @@ export class BurnEngine extends EventEmitter {
         this.pushLog(logEntry);
         this.emit('request_failed', logEntry);
 
-        // Rövid várakozás hálózati hiba esetén
+        // Network error backoff
         await abortableSleep(1000, signal);
       } finally {
         this.stats.activeWorkers = Math.max(0, this.stats.activeWorkers - 1);
@@ -377,7 +377,7 @@ export class BurnEngine extends EventEmitter {
     const elapsedMs = (this.stopTime || now) - this.startTime;
     this.stats.elapsedSeconds = Math.max(1, Math.round(elapsedMs / 1000));
 
-    // Gördülő ablak (utolsó 6 másodperc)
+    // Rolling window (last 6 seconds)
     const windowMs = 6000;
     const cutoff = now - windowMs;
     this.rollingSamples = this.rollingSamples.filter((s) => s.time >= cutoff);
@@ -428,7 +428,7 @@ export class BurnEngine extends EventEmitter {
       this.statsInterval = null;
     }
 
-    // Minden szál tiszta leállásának megvárása
+    // Wait for all active workers to settle cleanly
     if (this.workers.length > 0) {
       await Promise.allSettled(this.workers);
       this.workers = [];

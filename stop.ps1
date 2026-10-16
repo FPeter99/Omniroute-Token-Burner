@@ -1,44 +1,44 @@
 <#
 .SYNOPSIS
-    Leállítja az OmniRoute Token Égető web szervert és a háttérfolyamatokat.
+    Stops the OmniRoute Token Burner web server and active background processes.
 #>
 
 $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
 Set-Location -LiteralPath $PSScriptRoot
 
-Write-Host "🛑 OmniRoute Token Égető leállítása..." -ForegroundColor Yellow
+Write-Host "🛑 Stopping OmniRoute Token Burner..." -ForegroundColor Yellow
 
 $stopped = $false
 
-# 1. Kísérlet a szabályos HTTP leállításra
+# 1. Graceful HTTP shutdown attempt
 try {
     $res = Invoke-RestMethod -Uri "http://localhost:4420/api/shutdown" -Method Post -TimeoutSec 2 -ErrorAction Stop
     if ($res.success) {
-        Write-Host "✓ Szabályos leállítási jelzés sikeresen elküldve." -ForegroundColor Green
+        Write-Host "✓ Graceful shutdown signal sent successfully." -ForegroundColor Green
         $stopped = $true
     }
 }
 catch {
-    # A szerver már leállhatott vagy nem válaszol
+    # Server might not be responding or already stopped
 }
 
 Start-Sleep -Milliseconds 600
 
-# 2. Bármilyen megmaradt folyamat lezárása a 4420-as porton
+# 2. Kill any remaining processes on port 4420
 $conns = Get-NetTCPConnection -LocalPort 4420 -ErrorAction SilentlyContinue
 if ($conns) {
     $procIds = $conns | Select-Object -ExpandProperty OwningProcess -Unique
     foreach ($pidToKill in $procIds) {
         if ($pidToKill -gt 0) {
             Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
-            Write-Host "✓ Folyamat leállítva (PID: $pidToKill)" -ForegroundColor Green
+            Write-Host "✓ Terminated process ID: $pidToKill" -ForegroundColor Green
             $stopped = $true
         }
     }
 }
 
 if ($stopped) {
-    Write-Host "🔥 A Token Égető sikeresen és teljesen leállt." -ForegroundColor Green
+    Write-Host "🔥 Token Burner has been completely stopped." -ForegroundColor Green
 } else {
-    Write-Host "ℹ Nincs futó Token Égető folyamat a 4420-as porton." -ForegroundColor Cyan
+    Write-Host "ℹ No active Token Burner process found on port 4420." -ForegroundColor Cyan
 }

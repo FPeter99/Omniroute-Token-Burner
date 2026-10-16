@@ -1,12 +1,12 @@
-// OmniRoute Token Égető - Webes Kliens
+// OmniRoute Token Burner - Web Frontend Client
 let isRunning = false;
 let currentMode = 'infinite';
 let eventSource = null;
-let speedHistory = []; // Utolsó 50 másodperc
+let speedHistory = []; // Last 50 seconds
 let peakSpeed = 0;
 let logs = [];
 
-// DOM Elemek
+// DOM Elements
 const connectionStatus = document.getElementById('connectionStatus');
 const statusText = connectionStatus.querySelector('.status-text');
 const engineStatusBadge = document.getElementById('engineStatusBadge');
@@ -61,13 +61,13 @@ const logCountLabel = document.getElementById('logCountLabel');
 const speedChart = document.getElementById('speedChart');
 const chartPeakSpeed = document.getElementById('chartPeakSpeed');
 
-// Számok formázása magyar ezres elválasztóval
+// Format numbers with comma separator
 function formatNum(n) {
   if (n === null || n === undefined) return '0';
-  return Number(n).toLocaleString('hu-HU');
+  return Number(n).toLocaleString('en-US');
 }
 
-// Másodpercek formázása ÓÓ:PP:MP formátumba
+// Format seconds into HH:MM:SS
 function formatTime(seconds) {
   if (!seconds || seconds <= 0) return '00:00:00';
   const h = Math.floor(seconds / 3600);
@@ -76,39 +76,39 @@ function formatTime(seconds) {
   return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
 }
 
-// Eseménykezelők beállítása
+// Event Listeners
 function setupEvents() {
   btnStart.addEventListener('click', startBurn);
   btnStop.addEventListener('click', stopBurn);
 
   if (btnShutdownServer) {
     btnShutdownServer.addEventListener('click', async () => {
-      if (!confirm('Biztosan leállítod a Token Égető szervert?')) return;
+      if (!confirm('Are you sure you want to shut down the Token Burner server?')) return;
       try {
         await fetch('/api/shutdown', { method: 'POST' });
-        alert('A szerver leállt. Bezárhatod ezt az ablakot.');
+        alert('Server has shut down. You may close this tab.');
       } catch {
-        alert('A leállítási kérés elküldve.');
+        alert('Shutdown command sent.');
       }
     });
   }
 
-  // Szálak csúszkája
+  // Concurrency slider
   concurrencySlider.addEventListener('input', (e) => {
-    concurrencyValue.textContent = `${e.target.value} szál`;
+    concurrencyValue.textContent = `${e.target.value} threads`;
   });
 
-  // Szál gyorsgombok
+  // Concurrency presets
   document.querySelectorAll('.btn-preset-thread').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (controlsFieldSet.disabled) return;
       const t = btn.dataset.threads;
       concurrencySlider.value = t;
-      concurrencyValue.textContent = `${t} szál`;
+      concurrencyValue.textContent = `${t} threads`;
     });
   });
 
-  // Mód választó gombok
+  // Mode segmented control
   document.querySelectorAll('#modeSelector .seg-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (controlsFieldSet.disabled) return;
@@ -119,25 +119,25 @@ function setupEvents() {
     });
   });
 
-  // Token cél gyorsgombok
+  // Target presets
   document.querySelectorAll('.btn-preset-token').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (controlsFieldSet.disabled) return;
       targetTokensInput.value = btn.dataset.val;
-      valModeLabel.textContent = `Cél: ${formatNum(btn.dataset.val)} tok`;
+      valModeLabel.textContent = `Goal: ${formatNum(btn.dataset.val)} tok`;
     });
   });
 
-  // Időtartam gyorsgombok
+  // Duration presets
   document.querySelectorAll('.btn-preset-time').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (controlsFieldSet.disabled) return;
       durationMinutesInput.value = btn.dataset.val;
-      valModeLabel.textContent = `Időzített: ${btn.dataset.val} perc`;
+      valModeLabel.textContent = `Timed: ${btn.dataset.val} min`;
     });
   });
 
-  // Egyedi modell hozzáadása
+  // Custom model addition
   btnApplyCustomModel.addEventListener('click', () => {
     const custom = customModelInput.value.trim();
     if (!custom) return;
@@ -154,25 +154,25 @@ function setupEvents() {
     customModelInput.value = '';
   });
 
-  // Modell választás mentése a helyi tárhelyre
+  // Save selected model to localStorage
   modelSelect.addEventListener('change', () => {
     localStorage.setItem('omniroute_burner_model', modelSelect.value);
   });
 
-  // Modellek frissítése az OmniRoute-ból
+  // Refresh models from OmniRoute
   btnRefreshModels.addEventListener('click', async () => {
     refreshIcon.style.animation = 'flame-flicker 0.6s infinite';
     await fetchModels();
     refreshIcon.style.animation = '';
   });
 
-  // API kulcs láthatóság váltása
+  // Toggle API key visibility
   btnToggleKeyVis.addEventListener('click', () => {
     apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
     btnToggleKeyVis.textContent = apiKeyInput.type === 'password' ? '👁' : '🔒';
   });
 
-  // Napló törlése
+  // Clear logs
   btnClearLogs.addEventListener('click', () => {
     logs = [];
     renderLogs();
@@ -183,22 +183,22 @@ function updateModeUI() {
   if (currentMode === 'target') {
     targetOptions.style.display = 'block';
     durationOptions.style.display = 'none';
-    valModeLabel.textContent = `Cél: ${formatNum(targetTokensInput.value)} tok`;
-    progressLabel.textContent = 'Token cél elérése';
+    valModeLabel.textContent = `Goal: ${formatNum(targetTokensInput.value)} tok`;
+    progressLabel.textContent = 'Token Goal Progress';
   } else if (currentMode === 'duration') {
     targetOptions.style.display = 'none';
     durationOptions.style.display = 'block';
-    valModeLabel.textContent = `Időzített: ${durationMinutesInput.value} perc`;
-    progressLabel.textContent = 'Időtartam haladása';
+    valModeLabel.textContent = `Timed: ${durationMinutesInput.value} min`;
+    progressLabel.textContent = 'Duration Elapsed';
   } else {
     targetOptions.style.display = 'none';
     durationOptions.style.display = 'none';
-    valModeLabel.textContent = 'Folyamatos';
+    valModeLabel.textContent = 'Continuous';
     progressBarContainer.style.display = 'none';
   }
 }
 
-// Kezdeti állapot betöltése
+// Initial status fetch
 async function loadStatus() {
   try {
     const res = await fetch('/api/status');
@@ -227,7 +227,7 @@ async function loadStatus() {
       applyStatsUpdate(engine);
     }
   } catch (err) {
-    console.error('Nem sikerült betölteni a kezdeti állapotot:', err);
+    console.error('Failed to load status:', err);
   }
 }
 
@@ -241,7 +241,7 @@ function ensureOptionExists(modelId) {
   }
 }
 
-// Modellek lekérése a háttérszervertől
+// Fetch models from OmniRoute
 async function fetchModels() {
   try {
     const baseURL = apiUrlInput.value.trim();
@@ -282,11 +282,11 @@ async function fetchModels() {
       }
     }
   } catch (err) {
-    console.warn('Nem sikerült lekérni a modelleket:', err);
+    console.warn('Failed to fetch models:', err);
   }
 }
 
-// Server-Sent Events (SSE) valós idejű kapcsolat
+// Server-Sent Events (SSE) telemetry connection
 function initSSE() {
   if (eventSource) {
     eventSource.close();
@@ -295,12 +295,12 @@ function initSSE() {
 
   eventSource.onopen = () => {
     connectionStatus.className = 'status-badge online';
-    statusText.textContent = 'OmniRoute Csatlakozva';
+    statusText.textContent = 'OmniRoute Online';
   };
 
   eventSource.onerror = () => {
     connectionStatus.className = 'status-badge offline';
-    statusText.textContent = 'Kapcsolat megszakadt';
+    statusText.textContent = 'Disconnected';
   };
 
   eventSource.addEventListener('init', (e) => {
@@ -332,11 +332,11 @@ function initSSE() {
     const info = JSON.parse(e.data);
     applyEngineRunningState(false);
     if (info.reason === 'target_reached') {
-      alert(`🎯 Gratulálunk! A token cél teljesült: ${formatNum(info.totalTokensBurned)} token elégetve!`);
+      alert(`🎯 Congratulations! Token target reached: ${formatNum(info.totalTokensBurned)} tokens burned!`);
     } else if (info.reason === 'duration_reached') {
-      alert(`⏱ Az időzített égetés befejeződött! Összesen elégetve: ${formatNum(info.totalTokensBurned)} token.`);
+      alert(`⏱ Burn session completed! Total burned: ${formatNum(info.totalTokensBurned)} tokens.`);
     } else if (info.reason === 'context_length_exceeded') {
-      alert('⚠️ A választott modell elutasította a prompt méretét. Kérlek válassz kisebb csomagméretet (Nagy vagy Normál)!');
+      alert('⚠️ Selected model context length exceeded. Please choose a smaller payload size (Large or Normal).');
     }
   });
 }
@@ -349,14 +349,14 @@ function applyEngineRunningState(running) {
     lockedNotice.style.display = 'flex';
     controlsFieldSet.disabled = true;
     engineStatusBadge.className = 'engine-badge burning';
-    engineStatusText.textContent = '🔥 ÉGETÉS FOLYAMATBAN';
+    engineStatusText.textContent = '🔥 BURNING IN PROGRESS';
   } else {
     btnStart.style.display = 'inline-flex';
     btnStop.style.display = 'none';
     lockedNotice.style.display = 'none';
     controlsFieldSet.disabled = false;
     engineStatusBadge.className = 'engine-badge';
-    engineStatusText.textContent = 'KÉSZENLÉT';
+    engineStatusText.textContent = 'IDLE';
   }
 }
 
@@ -366,7 +366,7 @@ function applyStatsUpdate(stats) {
   valCompletionTokens.textContent = formatNum(stats.totalCompletionTokens || 0);
 
   const speed = stats.tokensPerSecond || 0;
-  valSpeed.innerHTML = `${formatNum(speed)} <small>tok/mp</small>`;
+  valSpeed.innerHTML = `${formatNum(speed)} <small>tok/s</small>`;
   valReqSpeed.textContent = stats.requestsPerSecond || 0;
 
   valWorkers.textContent = `${stats.activeWorkers || 0} / ${stats.concurrency || concurrencySlider.value}`;
@@ -375,40 +375,40 @@ function applyStatsUpdate(stats) {
 
   valElapsed.textContent = formatTime(stats.elapsedSeconds || 0);
 
-  // Sebességgörbe adatai a grafikonhoz
+  // Speed history for chart
   if (stats.isRunning) {
     speedHistory.push(speed);
     if (speedHistory.length > 50) speedHistory.shift();
     if (speed > peakSpeed) {
       peakSpeed = speed;
-      chartPeakSpeed.textContent = `Csúcs: ${formatNum(peakSpeed)} tok/s`;
+      chartPeakSpeed.textContent = `Peak: ${formatNum(peakSpeed)} tok/s`;
     }
     renderChart();
   }
 
-  // Haladási sáv Cél vagy Időzített módban
+  // Progress Bar for Target or Duration modes
   if (stats.mode === 'target') {
     progressBarContainer.style.display = 'block';
-    progressLabel.textContent = 'Token cél elérése';
+    progressLabel.textContent = 'Token Goal Progress';
     const pct = stats.percentComplete || 0;
     progressFill.style.width = `${pct}%`;
     progressPercent.textContent = `${pct}%`;
 
     const remaining = stats.targetTokens - stats.totalTokensBurned;
     if (remaining > 0 && stats.remainingSeconds) {
-      valModeLabel.textContent = `Hátralévő idő: ~${formatTime(stats.remainingSeconds)}`;
+      valModeLabel.textContent = `Remaining: ~${formatTime(stats.remainingSeconds)}`;
     } else {
-      valModeLabel.textContent = `Cél: ${formatNum(stats.targetTokens)} tok`;
+      valModeLabel.textContent = `Goal: ${formatNum(stats.targetTokens)} tok`;
     }
   } else if (stats.mode === 'duration') {
     progressBarContainer.style.display = 'block';
-    progressLabel.textContent = 'Időtartam haladása';
+    progressLabel.textContent = 'Duration Elapsed';
     const pct = stats.percentComplete || 0;
     progressFill.style.width = `${pct}%`;
     progressPercent.textContent = `${pct}%`;
 
     if (stats.remainingSeconds !== null && stats.remainingSeconds !== undefined) {
-      valModeLabel.textContent = `Hátralévő idő: ~${formatTime(stats.remainingSeconds)}`;
+      valModeLabel.textContent = `Remaining: ~${formatTime(stats.remainingSeconds)}`;
     }
   } else {
     progressBarContainer.style.display = 'none';
@@ -439,10 +439,10 @@ async function startBurn() {
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
-      alert(`Hiba az indításkor: ${data.error || 'Ismeretlen hiba'}`);
+      alert(`Launch error: ${data.error || 'Unknown error'}`);
     }
   } catch (err) {
-    alert(`Nem sikerült elérni a szervert: ${err.message}`);
+    alert(`Could not connect to server: ${err.message}`);
   } finally {
     btnStart.disabled = false;
   }
@@ -453,13 +453,13 @@ async function stopBurn() {
   try {
     await fetch('/api/stop', { method: 'POST' });
   } catch (err) {
-    console.error('Nem sikerült leállítani:', err);
+    console.error('Failed to stop:', err);
   } finally {
     btnStop.disabled = false;
   }
 }
 
-// Napló kezelése
+// Log table entries
 function addLogEntry(log) {
   logs.unshift(log);
   if (logs.length > 25) logs.pop();
@@ -470,19 +470,19 @@ function renderLogs() {
   if (logs.length === 0) {
     logsTableBody.innerHTML = `
       <tr class="empty-row">
-        <td colspan="7">A rendszer készenlétben áll. Kattints az „ÉGETÉS INDÍTÁSA” gombra!</td>
+        <td colspan="7">System is idle. Click “START BURNING” to initiate.</td>
       </tr>
     `;
-    logCountLabel.textContent = '0 kérés';
+    logCountLabel.textContent = '0 requests';
     return;
   }
 
-  logCountLabel.textContent = `${logs.length} kérés naplózva`;
+  logCountLabel.textContent = `${logs.length} requests logged`;
 
   logsTableBody.innerHTML = logs.map((log) => {
     const isOk = log.status === 'success';
     const badgeClass = isOk ? 'badge-success' : 'badge-error';
-    const statusText = isOk ? `SIKER (${log.code})` : `HIBA (${log.code})`;
+    const statusText = isOk ? `OK (${log.code})` : `ERR (${log.code})`;
     const preview = log.preview || log.message || '';
     const tokensDisplay = isOk ? `<b>${formatNum(log.totalTokens)}</b>` : '-';
 
@@ -500,7 +500,7 @@ function renderLogs() {
   }).join('');
 }
 
-// Sebesség görbe rajzolása
+// Speed Chart Rendering
 function renderChart() {
   if (!speedChart) return;
   const ctx = speedChart.getContext('2d');
@@ -513,7 +513,7 @@ function renderChart() {
 
   const maxVal = Math.max(1000, peakSpeed * 1.1);
 
-  // Finom rácsvonalak
+  // Subtle grid lines
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
   ctx.lineWidth = 1;
   for (let i = 1; i <= 3; i++) {
@@ -524,7 +524,7 @@ function renderChart() {
     ctx.stroke();
   }
 
-  // Simított görbe rajzolása
+  // Smooth curve
   ctx.beginPath();
   const step = w / (speedHistory.length - 1);
 
@@ -548,7 +548,7 @@ function renderChart() {
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Gradiens kitöltés a vonal alatt
+  // Gradient fill under curve
   ctx.lineTo(w, h);
   ctx.lineTo(0, h);
   ctx.closePath();
@@ -559,7 +559,7 @@ function renderChart() {
   ctx.fill();
 }
 
-// Betöltéskor inicializálás
+// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', async () => {
   setupEvents();
   await loadStatus();

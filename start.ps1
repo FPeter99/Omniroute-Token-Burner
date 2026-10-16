@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Elindítja az OmniRoute Token Égető Webes Irányítópultját.
+    Starts the OmniRoute Token Burner Web Server and Dashboard.
 #>
 
 $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -8,11 +8,11 @@ Set-Location -LiteralPath $PSScriptRoot
 
 Write-Host ""
 Write-Host " ================================================= " -ForegroundColor Red
-Write-Host "      🔥 OMNIROUTE TOKEN ÉGETŐ SZERVER 🔥          " -ForegroundColor Yellow -BackgroundColor Black
+Write-Host "      🔥 OMNIROUTE TOKEN BURNER SERVER 🔥          " -ForegroundColor Yellow -BackgroundColor Black
 Write-Host " ================================================= " -ForegroundColor Red
 Write-Host ""
-Write-Host "[*] Webes Irányítópult megnyitása: http://localhost:4420..." -ForegroundColor Cyan
-Write-Host "[*] Leállításhoz nyomj Ctrl+C-t ebben az ablakban, vagy futtasd a .\stop.ps1 parancsot." -ForegroundColor DarkYellow
+Write-Host "[*] Launching Web UI at http://localhost:4420..." -ForegroundColor Cyan
+Write-Host "[*] Press Ctrl+C in this window or run .\stop.ps1 to stop the server." -ForegroundColor DarkYellow
 Write-Host ""
 
 Start-Process "http://localhost:4420"

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="hu">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OmniRoute Token Égető 🔥</title>
+  <title>OmniRoute Token Burner 🔥</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -14,79 +14,79 @@
     <div class="header-left">
       <div class="logo-flame">🔥</div>
       <div class="title-group">
-        <h1>OmniRoute Token Égető</h1>
-        <span class="subtitle">Nagysebességű Párhuzamosított AI Token Megsemmisítő</span>
+        <h1>OmniRoute Token Burner</h1>
+        <span class="subtitle">High-Velocity Parallel AI Token Incinerator</span>
       </div>
     </div>
     <div class="header-right">
       <div class="status-badge" id="connectionStatus">
         <span class="status-dot"></span>
-        <span class="status-text">Csatlakozás...</span>
+        <span class="status-text">Connecting...</span>
       </div>
       <div class="engine-badge" id="engineStatusBadge">
         <span class="engine-dot"></span>
-        <span class="engine-text" id="engineStatusText">KÉSZENLÉT</span>
+        <span class="engine-text" id="engineStatusText">IDLE</span>
       </div>
-      <button id="btnShutdownServer" class="btn-shutdown" title="Szerver és háttérfolyamatok azonnali leállítása">🛑 Kilépés</button>
+      <button id="btnShutdownServer" class="btn-shutdown" title="Shut down server and background processes">🛑 Exit</button>
     </div>
   </header>
 
   <main class="dashboard-grid">
-    <!-- Felső Fő Mutatók (Metrikák) -->
+    <!-- Top Metrics Overview -->
     <section class="metrics-row">
       <div class="metric-card card-burned">
         <div class="metric-header">
-          <span class="metric-label">ELÉGETETT TOKENEK</span>
+          <span class="metric-label">TOTAL BURNED TOKENS</span>
           <span class="metric-icon">🔥</span>
         </div>
         <div class="metric-value font-mono" id="valTotalBurned">0</div>
         <div class="metric-sub">
           <span>Prompt: <b id="valPromptTokens">0</b></span>
           <span class="separator">•</span>
-          <span>Válasz: <b id="valCompletionTokens">0</b></span>
+          <span>Output: <b id="valCompletionTokens">0</b></span>
         </div>
       </div>
 
       <div class="metric-card card-speed">
         <div class="metric-header">
-          <span class="metric-label">ÁTVITELI SEBESSÉG</span>
+          <span class="metric-label">BURNING SPEED</span>
           <span class="metric-icon">⚡</span>
         </div>
-        <div class="metric-value font-mono" id="valSpeed">0 <small>tok/mp</small></div>
+        <div class="metric-value font-mono" id="valSpeed">0 <small>tok/sec</small></div>
         <div class="metric-sub">
-          <span>Kérések: <b id="valReqSpeed">0</b> / mp</span>
+          <span>Requests: <b id="valReqSpeed">0</b> / sec</span>
         </div>
       </div>
 
       <div class="metric-card card-workers">
         <div class="metric-header">
-          <span class="metric-label">AKTÍV SZÁLAK & KÉRÉSEK</span>
+          <span class="metric-label">ACTIVE THREADS & REQUESTS</span>
           <span class="metric-icon">⚙️</span>
         </div>
         <div class="metric-value font-mono" id="valWorkers">0 / 8</div>
         <div class="metric-sub">
-          <span class="text-success">Sikeres: <b id="valSuccessCount">0</b></span>
+          <span class="text-success">Success: <b id="valSuccessCount">0</b></span>
           <span class="separator">•</span>
-          <span class="text-danger">Hiba: <b id="valErrorCount">0</b></span>
+          <span class="text-danger">Failed: <b id="valErrorCount">0</b></span>
         </div>
       </div>
 
       <div class="metric-card card-time">
         <div class="metric-header">
-          <span class="metric-label">ELTELT IDŐ</span>
+          <span class="metric-label">ELAPSED TIME</span>
           <span class="metric-icon">⏱</span>
         </div>
         <div class="metric-value font-mono" id="valElapsed">00:00:00</div>
         <div class="metric-sub" id="subTimeGoal">
-          <span>Mód: <b id="valModeLabel">Folyamatos</b></span>
+          <span>Mode: <b id="valModeLabel">Continuous</b></span>
         </div>
       </div>
     </section>
 
-    <!-- Haladási sáv Token Cél vagy Időzített módhoz -->
+    <!-- Progress bar for Target and Duration modes -->
     <div class="progress-bar-container" id="progressBarContainer" style="display: none;">
       <div class="progress-info">
-        <span id="progressLabel">Haladás a cél felé</span>
+        <span id="progressLabel">Goal Progress</span>
         <span id="progressPercent" class="font-mono">0%</span>
       </div>
       <div class="progress-track">
@@ -94,104 +94,104 @@
       </div>
     </div>
 
-    <!-- Fő Vezérlőpult és Élő Adatfolyam -->
+    <!-- Main Content: Left Controls, Right Live Telemetry -->
     <div class="control-and-feed-row">
-      <!-- Bal panel: Vezérlők és beállítások -->
+      <!-- Left Panel: Controls & Configuration -->
       <aside class="control-panel panel-card">
         <div class="panel-header">
-          <h2>Vezérlőpult</h2>
+          <h2>Control Panel</h2>
         </div>
 
-        <!-- Fő Indítás / Leállítás Gombok -->
+        <!-- Primary Action Buttons -->
         <div class="action-btn-group">
           <button id="btnStart" class="btn btn-burn">
             <span class="btn-icon">🔥</span>
-            <span class="btn-title">ÉGETÉS INDÍTÁSA</span>
+            <span class="btn-title">START BURNING</span>
           </button>
           <button id="btnStop" class="btn btn-stop" style="display: none;">
             <span class="btn-icon">🛑</span>
-            <span class="btn-title">LEÁLLÍTÁS</span>
+            <span class="btn-title">STOP BURNING</span>
           </button>
         </div>
 
         <div id="lockedNotice" class="panel-locked-notice" style="display: none;">
-          <span>🔒 Égetés közben a beállítások zárolva vannak. Módosításhoz állítsd le az égetést.</span>
+          <span>🔒 Controls are locked while burning to prevent race conditions. Click STOP to modify settings.</span>
         </div>
 
         <fieldset id="controlsFieldSet" style="border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px;">
-          <!-- Modell Választó -->
+          <!-- Model Selection -->
           <div class="form-group">
             <div class="label-with-action">
-              <label for="modelSelect" class="section-label">OmniRoute Modell</label>
-              <button type="button" id="btnRefreshModels" class="btn-link" title="Modellek listájának újratöltése">
-                <span id="refreshIcon">🔄</span> Frissítés
+              <label for="modelSelect" class="section-label">OmniRoute Model</label>
+              <button type="button" id="btnRefreshModels" class="btn-link" title="Refresh model list from OmniRoute">
+                <span id="refreshIcon">🔄</span> Refresh
               </button>
             </div>
             <select id="modelSelect" class="form-select font-mono">
-              <optgroup label="🚀 Ajánlott gyors modellek" id="recommendedGroup">
-                <option value="agy/gemini-3.8-flash-high" selected>agy/gemini-3.8-flash-high (Ultra-gyors)</option>
+              <optgroup label="🚀 Recommended Fast Models" id="recommendedGroup">
+                <option value="agy/gemini-3.8-flash-high" selected>agy/gemini-3.8-flash-high (Ultra-fast)</option>
                 <option value="auto/best-fast">auto/best-fast</option>
                 <option value="auto/fast">auto/fast</option>
                 <option value="auto/coding">auto/coding</option>
               </optgroup>
-              <optgroup label="⚡ További elérhető modellek" id="otherModelsGroup">
+              <optgroup label="⚡ Available Models" id="otherModelsGroup">
               </optgroup>
             </select>
             <div class="custom-model-row">
-              <input type="text" id="customModelInput" class="form-input font-mono text-sm" placeholder="Vagy egyedi modell név (pl. gemini-3-flash)...">
-              <button type="button" id="btnApplyCustomModel" class="btn-secondary text-sm">Hozzáad</button>
+              <input type="text" id="customModelInput" class="form-input font-mono text-sm" placeholder="Or custom model name (e.g. gemini-3-flash)...">
+              <button type="button" id="btnApplyCustomModel" class="btn-secondary text-sm">Add</button>
             </div>
           </div>
 
-          <!-- Égetési Csomagméret / Sebesség -->
+          <!-- Payload Batch Size -->
           <div class="form-group">
-            <label for="batchSizeSelect" class="section-label">Égetési Csomagméret (Sebesség)</label>
+            <label for="batchSizeSelect" class="section-label">Burn Payload Size (Speed)</label>
             <select id="batchSizeSelect" class="form-select">
-              <option value="monster" selected>💥 Monster Méret (~65 000 token/kérés - Leggyorsabb)</option>
-              <option value="large">⚡ Nagy Méret (~35 000 token/kérés)</option>
-              <option value="normal">🏃 Normál Méret (~15 000 token/kérés - Kisebb modellekhez)</option>
+              <option value="monster" selected>💥 Monster Size (~65,000 tokens/request - Fastest)</option>
+              <option value="large">⚡ Large Size (~35,000 tokens/request)</option>
+              <option value="normal">🏃 Normal Size (~15,000 tokens/request - Smaller context models)</option>
             </select>
           </div>
 
-          <!-- Párhuzamos Szálak (Concurrency) Slider -->
+          <!-- Concurrency Threads Slider -->
           <div class="form-group">
             <div class="label-with-action">
-              <label for="concurrencySlider" class="section-label">Párhuzamos Szálak</label>
-              <span id="concurrencyValue" class="badge-value font-mono">8 szál</span>
+              <label for="concurrencySlider" class="section-label">Parallel Threads</label>
+              <span id="concurrencyValue" class="badge-value font-mono">8 threads</span>
             </div>
             <input type="range" id="concurrencySlider" class="form-range" min="1" max="64" value="8" step="1">
             <div class="presets-row" style="margin-top: 4px;">
-              <button type="button" class="btn-preset btn-preset-thread" data-threads="4">4 szál</button>
-              <button type="button" class="btn-preset btn-preset-thread" data-threads="8">8 szál (Ajánlott)</button>
-              <button type="button" class="btn-preset btn-preset-thread" data-threads="16">16 szál</button>
-              <button type="button" class="btn-preset btn-preset-thread" data-threads="24">24 szál</button>
-              <button type="button" class="btn-preset btn-preset-thread" data-threads="32">32 szál</button>
-              <button type="button" class="btn-preset btn-preset-thread" data-threads="64">64 szál</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="4">4 threads</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="8">8 threads (Optimal)</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="16">16 threads</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="24">24 threads</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="32">32 threads</button>
+              <button type="button" class="btn-preset btn-preset-thread" data-threads="64">64 threads</button>
             </div>
           </div>
 
-          <!-- Égetési Mód Választó -->
+          <!-- Mode Selector -->
           <div class="form-group">
-            <label class="section-label">Égetési Mód</label>
+            <label class="section-label">Burn Mode</label>
             <div class="segmented-control" id="modeSelector">
               <button type="button" class="seg-btn active" data-mode="infinite">
                 <span class="seg-icon">♾</span>
-                <span>Folyamatos</span>
+                <span>Continuous</span>
               </button>
               <button type="button" class="seg-btn" data-mode="target">
                 <span class="seg-icon">🎯</span>
-                <span>Token Cél</span>
+                <span>Token Target</span>
               </button>
               <button type="button" class="seg-btn" data-mode="duration">
                 <span class="seg-icon">⏱</span>
-                <span>Időzített</span>
+                <span>Timed</span>
               </button>
             </div>
           </div>
 
-          <!-- Mód albeállítás: Token Cél -->
+          <!-- Target Mode Options -->
           <div class="form-group mode-subgroup" id="targetOptions" style="display: none;">
-            <label for="targetTokensInput">Cél elégetendő token mennyiség:</label>
+            <label for="targetTokensInput">Target Token Count:</label>
             <div class="input-with-presets">
               <input type="number" id="targetTokensInput" class="form-input font-mono" value="1000000" min="50000" step="100000">
               <div class="presets-row">
@@ -204,88 +204,88 @@
             </div>
           </div>
 
-          <!-- Mód albeállítás: Időzített Égetés -->
+          <!-- Duration Mode Options -->
           <div class="form-group mode-subgroup" id="durationOptions" style="display: none;">
-            <label for="durationMinutesInput">Égetési időtartam (percben):</label>
+            <label for="durationMinutesInput">Burn Duration (minutes):</label>
             <div class="input-with-presets">
               <input type="number" id="durationMinutesInput" class="form-input font-mono" value="30" min="1" step="5">
               <div class="presets-row">
-                <button type="button" class="btn-preset btn-preset-time" data-val="5">5 perc</button>
-                <button type="button" class="btn-preset btn-preset-time" data-val="15">15 perc</button>
-                <button type="button" class="btn-preset btn-preset-time" data-val="30">30 perc</button>
-                <button type="button" class="btn-preset btn-preset-time" data-val="60">1 óra</button>
-                <button type="button" class="btn-preset btn-preset-time" data-val="120">2 óra</button>
-                <button type="button" class="btn-preset btn-preset-time" data-val="360">6 óra</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="5">5 min</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="15">15 min</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="30">30 min</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="60">1 hour</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="120">2 hours</button>
+                <button type="button" class="btn-preset btn-preset-time" data-val="360">6 hours</button>
               </div>
             </div>
           </div>
         </fieldset>
 
-        <!-- OmniRoute Kapcsolat (Lenyitható panel) -->
+        <!-- OmniRoute Connection Details (Collapsible) -->
         <details class="connection-details" style="margin-top: 8px;">
-          <summary>OmniRoute Kapcsolat & API Kulcs</summary>
+          <summary>OmniRoute Connection & API Key</summary>
           <div class="details-body">
             <div class="form-group">
-              <label for="apiUrlInput">OmniRoute Végpont Cím:</label>
+              <label for="apiUrlInput">OmniRoute Base URL:</label>
               <input type="text" id="apiUrlInput" class="form-input font-mono text-sm" value="http://localhost:20128/v1">
             </div>
             <div class="form-group">
-              <label for="apiKeyInput">OmniRoute API Kulcs:</label>
+              <label for="apiKeyInput">OmniRoute API Key:</label>
               <div class="password-wrapper">
                 <input type="password" id="apiKeyInput" class="form-input font-mono text-sm" placeholder="sk-...">
-                <button type="button" id="btnToggleKeyVis" class="btn-toggle-eye" title="Megjelenítés">👁</button>
+                <button type="button" id="btnToggleKeyVis" class="btn-toggle-eye" title="Toggle visibility">👁</button>
               </div>
-              <small class="help-text">Automatikusan felismerve a helyi OpenCode konfigurációból.</small>
+              <small class="help-text">Auto-detected from your local OpenCode environment.</small>
             </div>
           </div>
         </details>
       </aside>
 
-      <!-- Jobb panel: Élő Teljesítmény Grafikon & Kérés Napló -->
+      <!-- Right Panel: Live Speed Chart & Request Stream -->
       <section class="live-panel panel-card">
         <div class="panel-header">
           <div class="panel-header-left">
-            <h2>Élő Égetési Folyamat</h2>
-            <span class="live-pill"><span class="live-pill-dot"></span> ÉLŐ</span>
+            <h2>Live Burning Stream</h2>
+            <span class="live-pill"><span class="live-pill-dot"></span> LIVE</span>
           </div>
           <div class="panel-header-right">
-            <button id="btnClearLogs" class="btn-secondary text-sm">Napló ürítése</button>
+            <button id="btnClearLogs" class="btn-secondary text-sm">Clear Logs</button>
           </div>
         </div>
 
-        <!-- Valós idejű sebességgörbe grafikon -->
+        <!-- Real-time Speed Chart -->
         <div class="chart-box">
           <div class="chart-header">
-            <span>Sebességgörbe (Token / másodperc)</span>
-            <span id="chartPeakSpeed" class="font-mono text-sm text-dim">Csúcs: 0 tok/s</span>
+            <span>Throughput Speed Curve (Tokens / second)</span>
+            <span id="chartPeakSpeed" class="font-mono text-sm text-dim">Peak: 0 tok/s</span>
           </div>
           <div class="canvas-wrapper">
             <canvas id="speedChart" width="800" height="180"></canvas>
           </div>
         </div>
 
-        <!-- Legutóbbi kérések naplója -->
+        <!-- Live Request Logs -->
         <div class="logs-container">
           <div class="logs-header-bar">
-            <span>Legutóbbi kérések állapota</span>
-            <span id="logCountLabel" class="text-dim text-sm">0 kérés</span>
+            <span>Recent OmniRoute Requests</span>
+            <span id="logCountLabel" class="text-dim text-sm">0 requests</span>
           </div>
           <div class="table-responsive">
             <table class="logs-table">
               <thead>
                 <tr>
-                  <th>Idő</th>
-                  <th>Szál</th>
-                  <th>Modell</th>
-                  <th>Időtartam</th>
-                  <th>Elégetett Token</th>
-                  <th>Állapot</th>
-                  <th>Válasz / Részlet</th>
+                  <th>Time</th>
+                  <th>Worker</th>
+                  <th>Model</th>
+                  <th>Latency</th>
+                  <th>Burned Tokens</th>
+                  <th>Status</th>
+                  <th>Preview / Details</th>
                 </tr>
               </thead>
               <tbody id="logsTableBody">
                 <tr class="empty-row">
-                  <td colspan="7">A rendszer készenlétben áll. Kattints az „ÉGETÉS INDÍTÁSA” gombra!</td>
+                  <td colspan="7">System is idle. Click “START BURNING” to initiate.</td>
                 </tr>
               </tbody>
             </table>
