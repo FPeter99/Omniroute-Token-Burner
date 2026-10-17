@@ -1,5 +1,7 @@
 # OmniRoute Token Burner
 
+Got too many AI accounts connected to OmniRoute and nothing to do with them? I made this to burn some spare tokens, pretend you're being productive, and flex your token usage to your friends. 😎
+
 ![Token Burner dashboard](https://files.catbox.moe/hj4ymi.png)
 
 Local dashboard for controlled AI token-usage sessions through OmniRoute. Select a model or stack, then run continuously, to a token target, or for a set duration.
